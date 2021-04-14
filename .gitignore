@@ -1,0 +1,11 @@
+# IDE files #
+*.komodoproj
+
+# Datastores #
+*.sqlite
+*.json
+# Python stuff #
+__pycache__/
+*$py.class
+.Python
+build/
