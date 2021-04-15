@@ -1,5 +1,6 @@
 # IDE files #
-*.komodoproj
+*.komodoproject
+.komodotools/
 
 # Datastores #
 *.sqlite
