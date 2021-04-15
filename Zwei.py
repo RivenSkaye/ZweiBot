@@ -22,7 +22,7 @@ def _prefix(bot, guild):
     return bot.prefixes[str(guild)] + [f"<@{bot.bot_id}>", f"<@!{bot.bot_id}"]
 
 class ZweiBot(commands.Bot): # No need to have it handle shards since we're small
-    import utils._datastores as ds
+    import utils._datastores as _ds
     def __init__(self):
         try:
             with open("./data/config.json") as config:
