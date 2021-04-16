@@ -1,8 +1,20 @@
-from typing import Union, Dict, Optional
+from typing import Union, Dict, Optional, Any
 from abc import ABC
+from pathlib import Path
+import os
 
 class DataStore(ABC):
     """Object oriented approach for abstracting different types of datastores.
+
+    There's only one argument required for instantiating any of the subclasses,
+    this is the `Path` to the datastore, or the `str`ing representation of the
+    path. As with any `Path` object or `str`ing equivalent, this may be both a
+    relative or an absolute path, so long as it's correct.
+    Subclasses may add additional arguments to instantiate them, for example
+    dicts of args required for `asqlite` or the extra parameters for `json`.
+    All keyword arguments other than the `Path` or `str` for the `store` kwarg
+    will be consumed into a single `readopts` dict that is to be expanded as
+    kwargs for whatever datastore is being used.
 
     This is a base class that defines several methods. The aim of it is to
     abstract different types of datastores like JSON, sqlite or csv away so
@@ -30,6 +42,11 @@ class DataStore(ABC):
     Instead, either make the error value in the return descriptive or log the
     failure for debugging and make sure the application handles this correctly.
     """
+    def __init__(self, store: Union[str,Path], openopts: Dict={mode: "r"}, **readopts: Dict):
+        with open(store, **openopts) as ds:
+            self.file = store
+            self.store = ds.read(**readopts)
+
     @abstractmethod
     async def get(self, table: str, key: Union[str,int]) -> Dict:
         """ Simple get function that returns a row or object from the DB.
@@ -42,8 +59,12 @@ class DataStore(ABC):
         pass
 
     @abstractmethod
-    async def set(self, table: str, data: Dict, key: Optional[Union[str,int]]) -> bool:
+    async def set(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
         """ Function to add data to the DB. Make sure to handle caching!
+
+        This function assumes the data is presented as a dict, containing
+        a key set to the ID or key for the row and a value, or a set of values,
+        for the row to be set.
 
         This is a blueprint function, so some implementations might use some
         form of caching like Redis or whatever MongoDB uses. Please do not
@@ -54,7 +75,7 @@ class DataStore(ABC):
         pass
 
     @abstractmethod
-    async def update(self, table: str, key: Union[str,int], data: Dict) -> Dict:
+    async def update(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
         """ Update function for rows/entries in a datastore.
 
         The data object only has to contain the changed values, since dicts
@@ -84,7 +105,92 @@ class DataStore(ABC):
         return False
 
 class JSONStore(DataStore):
-    pass
+    """ A basic `DataStore` implementation for working with JSON-based data
+
+    This is written for data that doesn't require high integrity and that's
+    not expected to become very large. For example the bot start config, that
+    only ever needs to be read by the application, is good to have in JSON
+    files so that it can be very quickly opened and read for data
+    """
+    import json
+
+    async def __init__(self, store: Union[str,Path], openopts: Dict={mode: "r"}, jsonopts: Dict={}, **readopts: Dict):
+        """ Open a file and read it as JSON, with possible read and json options.
+
+        This method adds `jsonopts` to the init signature, to add in options
+        for the way the `json` module loads the file into a dict.
+        This means all kwargs unknown to `__init__` will be passed to the `open`
+        call to read the store, except for `store` which should be a `str` or
+        `Path` and `jsonopts` which should be a `dict`. Both of these are
+        entirely optional and use the libs' defaults.
+
+        Returns either the value of the requested entry, or None if it doesnt
+        exist yet.
+        """
+        if jsonopts["indent"]:
+            self.indent = jsonopts["indent"]
+        with open(store) as ds:
+            temp_store = ds.read(**readopts)
+            self.file = store
+            self.store = json.load(temp_store, **jsonopts)
+            self.indent = jsonopts["indent"]
+
+    async def get(self, table: str, key: Union[str,int]) -> Dict:
+        if not self.store[table][key]: return None
+        return self.store[table][key]
+
+    async def set(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
+        """ Expects to either replace a key-value pair, or several of these.
+
+        When replacing one key, this function expects data to be any datatype
+        that is either a string, or which has a clear string representation.
+        When replacing multiple keys, this function expects the `key` arg to be
+        empty and the `data` arg to be a dict with keys that match the original
+        datastore's keys, so it can update the dict that was used to represent
+        it in Python.
+        A single `v` value may be another dict for a JSON object.
+        """
+        try:
+            if not self.store[table][key]:
+                self.store[table][key] = data
+                return True
+            else: return False
+        except ex:
+            print(ex.message)
+            return False
+
+    async def update(self, table: str, data: Union[Dict,Any], key: Optional[Union[str,int]]) -> bool:
+        """ Expects to either replace a key-value pair, or several of these.
+
+        Expects to either update a single `key`, setting its value to `data`,
+        or expects to update all of the keys in both `data` and `table` to the
+        value listed for them in `data`.
+        Also fails by returning False if any of the keys do not yet exist.
+        """
+        try:
+            if key:
+                self.store[table][key] = data
+                return True
+            else:
+                for key in data.keys():
+                    if not key in table.keys(): return False
+                self.store[table].update(data)
+            return True
+        except ex:
+            print(ex.message)
+            return False
+
+    async def save(self) -> bool:
+        with open(self.file, mode="w") as s:
+            json.dump(self.file, self.store, indent=self.indent if self.indent else 4)
 
 class SQLiteStore(DataStore):
+    """ A `DataStore` implementation for use with Danny's `asqlite` library.
+
+    This class assumes the dependency of `asqlite` has been met, this can be
+    found at https://github.com/Rapptz/asqlite and all credit goes to the
+    author Rapptz/Danny and the effort he made to create this library in order
+    to use sqlite3 asynchronously.
+    """
+    import asqlite
     pass
