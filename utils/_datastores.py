@@ -1,7 +1,3 @@
-import json
-import asqlite
-from pathlib import Path
-import os
 from typing import Union, Dict, Optional
 from abc import ABC
 
@@ -11,6 +7,8 @@ class DataStore(ABC):
     This is a base class that defines several methods. The aim of it is to
     abstract different types of datastores like JSON, sqlite or csv away so
     that the main focus can be the application.
+    The base class assumes it will be used and implemented asynchronously,
+    hence why all methods are async.
 
     The use-case it's written for is a Discord bot, where depending on how
     much activity it sees, the requirements for data integrity and the
@@ -33,7 +31,7 @@ class DataStore(ABC):
     failure for debugging and make sure the application handles this correctly.
     """
     @abstractmethod
-    async def get(table: str, key: Union[str,int]) -> Dict:
+    async def get(self, table: str, key: Union[str,int]) -> Dict:
         """ Simple get function that returns a row or object from the DB.
 
         The return value is a dict containing the keys and values. If an
@@ -44,7 +42,7 @@ class DataStore(ABC):
         pass
 
     @abstractmethod
-    async def set(table: str, data: Dict, key: Optional[Union[str,int]]) -> bool:
+    async def set(self, table: str, data: Dict, key: Optional[Union[str,int]]) -> bool:
         """ Function to add data to the DB. Make sure to handle caching!
 
         This is a blueprint function, so some implementations might use some
@@ -56,7 +54,7 @@ class DataStore(ABC):
         pass
 
     @abstractmethod
-    async def update(table: str, key: Union[str,int], data: Dict) -> Dict:
+    async def update(self, table: str, key: Union[str,int], data: Dict) -> Dict:
         """ Update function for rows/entries in a datastore.
 
         The data object only has to contain the changed values, since dicts
@@ -69,3 +67,24 @@ class DataStore(ABC):
         key set if something goes wrong.
         """
         pass
+
+    async def save(self) -> bool:
+        """ Save the database to its file. This is optional to implement.
+
+        Depending on the db system and config, caching or an in-memory object
+        may be used for the datastore. This method is there to facilitate this
+        by allowing either the `set` and `update` methods to save to disk, or
+        by having this function implemented to have a caching system like
+        Redis or similar save the datastore rather than keeping changes cached.
+
+        Returns `True` when successful, or `False` if not so much.
+        The default implementation will ALWAYS return false, since it assumes
+        `update` and `set` do not depend on a caching mechanism.
+        """
+        return False
+
+class JSONStore(DataStore):
+    pass
+
+class SQLiteStore(DataStore):
+    pass
