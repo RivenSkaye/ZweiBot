@@ -136,8 +136,9 @@ class JSONStore(DataStore):
             self.indent = jsonopts["indent"]
 
     async def get(self, table: str, key: Union[str,int]) -> Dict:
-        if not self.store[table][key]: return None
-        return self.store[table][key]
+        if table not in self.store: return {"error": f"The table `{table}` could not be found."}
+        if key not in self.store[table]: return {"error": f"They key `{key}` does not exist in this document."}
+        return self.store[table][key] # This might return {key: None} which can be valid in Python
 
     async def set(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
         """ Expects to either replace a key-value pair, or several of these.
@@ -151,10 +152,13 @@ class JSONStore(DataStore):
         A single `v` value may be another dict for a JSON object.
         """
         try:
+            if table not in self.store: return {"error": f"The table `{table}` could not be found."}
             if not self.store[table][key]:
                 self.store[table][key] = data
                 return True
-            else: return False
+            else:
+                print("This value already exists, use the update function instead!")
+                return False
         except ex:
             print(ex.message)
             return False
@@ -173,7 +177,9 @@ class JSONStore(DataStore):
                 return True
             else:
                 for key in data.keys():
-                    if not key in table.keys(): return False
+                    if not key in table.keys():
+                        print(f"The key `{key}` does not exist, please use the set function for this")
+                        return False
                 self.store[table].update(data)
             return True
         except ex:
@@ -181,8 +187,13 @@ class JSONStore(DataStore):
             return False
 
     async def save(self) -> bool:
-        with open(self.file, mode="w") as s:
-            json.dump(self.file, self.store, indent=self.indent if self.indent else 4)
+        try:
+            with open(self.file, mode="w") as s:
+                json.dump(self.file, self.store, indent=self.indent if self.indent else 4)
+            return True
+        except ex:
+            print(ex.message)
+            return False
 
 class SQLiteStore(DataStore):
     """ A `DataStore` implementation for use with Danny's `asqlite` library.
