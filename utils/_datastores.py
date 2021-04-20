@@ -204,4 +204,15 @@ class SQLiteStore(DataStore):
     to use sqlite3 asynchronously.
     """
     import asqlite
-    pass
+
+    async def get(self, table: str, key: Union[str,int], column: str="id") -> Dict:
+        """ Simple get function to query the DB for data from specific tables.
+
+        This implementation adds an optional parameter `column` to select rows
+        based on a specific value for a column.
+        For more complex `SELECT` statements, use `get_complex()`.
+        The new parameter defaults to the row's `id` field.
+        """
+        query = f"SELECT * FROM {table} WHERE {column}=={key}"
+        # Run the query here, I'm too tired to do this rn.
+        # db.conn(), db.execute(query), db.close()
