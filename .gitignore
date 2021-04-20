@@ -8,6 +8,7 @@
 
 # Datastores #
 *.sqlite
+*.sdb
 *.json
 
 # Python stuff #
