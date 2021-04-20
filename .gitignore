@@ -2,9 +2,14 @@
 *.komodoproject
 .komodotools/
 
+# MySQL Workbench #
+*.mwb
+*.mwb.bak
+
 # Datastores #
 *.sqlite
 *.json
+
 # Python stuff #
 __pycache__/
 *$py.class
