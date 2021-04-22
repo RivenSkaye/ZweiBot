@@ -1,7 +1,7 @@
-from typing import Union, Dict, Optional, Any
-from abc import ABC
-from pathlib import Path
-import os
+from typing import Union, Dict, Optional, Any, List # Type hints
+from abc import ABC # Abstract Base Classes
+from pathlib import Path # For loading files and taking in Path objects
+import os # For OS-bound stuff like saving files
 
 class DataStore(ABC):
     """Object oriented approach for abstracting different types of datastores.
@@ -43,9 +43,7 @@ class DataStore(ABC):
     failure for debugging and make sure the application handles this correctly.
     """
     def __init__(self, store: Union[str,Path], openopts: Dict={mode: "r"}, **readopts: Dict):
-        with open(store, **openopts) as ds:
-            self.file = store
-            self.store = ds.read(**readopts)
+        self.file = store
 
     @abstractmethod
     async def get(self, table: str, key: Union[str,int]) -> Dict:
@@ -102,6 +100,8 @@ class DataStore(ABC):
         The default implementation will ALWAYS return false, since it assumes
         `update` and `set` do not depend on a caching mechanism.
         """
+        print("Default implementations of DataStore assume `set` and `update` save changes to disk, or that some underlying mechanism will.")
+        print("If changes after these methods were not saved to disk, blame whomever wrote the implementation of DataStore you're using.")
         return False
 
 class JSONStore(DataStore):
@@ -114,7 +114,7 @@ class JSONStore(DataStore):
     """
     import json
 
-    async def __init__(self, store: Union[str,Path], openopts: Dict={mode: "r"}, jsonopts: Dict={}, **readopts: Dict):
+    async def __init__(self, store: Union[str,Path], openopts: Dict={mode: "r+"}, jsonopts: Dict={}, **readopts: Dict):
         """ Open a file and read it as JSON, with possible read and json options.
 
         This method adds `jsonopts` to the init signature, to add in options
@@ -124,38 +124,39 @@ class JSONStore(DataStore):
         `Path` and `jsonopts` which should be a `dict`. Both of these are
         entirely optional and use the libs' defaults.
 
+        Changes made to the datastore using the set and update methods will be
+        saved to disk immediately.
+
         Returns either the value of the requested entry, or None if it doesnt
         exist yet.
         """
+        super().__init__(store=store)
         if jsonopts["indent"]:
             self.indent = jsonopts["indent"]
-        with open(store) as ds:
+        with open(store, **openopts) as ds:
             temp_store = ds.read(**readopts)
-            self.file = store
-            self.store = json.load(temp_store, **jsonopts)
-            self.indent = jsonopts["indent"]
+            self._store = json.load(temp_store, **jsonopts)
 
     async def get(self, table: str, key: Union[str,int]) -> Dict:
-        if table not in self.store: return {"error": f"The table `{table}` could not be found."}
-        if key not in self.store[table]: return {"error": f"They key `{key}` does not exist in this document."}
-        return self.store[table][key] # This might return {key: None} which can be valid in Python
+        if table not in self._store: return {"error": f"The table `{table}` could not be found."}
+        if key not in self._store[table]: return {"error": f"They key `{key}` does not exist in this document."}
+        return self._store[table][key] # This might return {key: None} which can be valid in Python
 
     async def set(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
-        """ Expects to either replace a key-value pair, or several of these.
+        """ A function to add a single new key-value pair to the datastore.
 
-        When replacing one key, this function expects data to be any datatype
+        When adding one key, this function expects data to be any data type
         that is either a string, or which has a clear string representation.
-        When replacing multiple keys, this function expects the `key` arg to be
-        empty and the `data` arg to be a dict with keys that match the original
-        datastore's keys, so it can update the dict that was used to represent
-        it in Python.
         A single `v` value may be another dict for a JSON object.
+
+        Returns True if successful, or False if not successful.
+        When False is returned, check std.out for error information.
         """
         try:
-            if table not in self.store: return {"error": f"The table `{table}` could not be found."}
-            if not self.store[table][key]:
-                self.store[table][key] = data
-                return True
+            if table not in self._store: return {"error": f"The table `{table}` could not be found."}
+            if not self._store[table][key]:
+                self._store[table][key] = data
+                return self._save()
             else:
                 print("This value already exists, use the update function instead!")
                 return False
@@ -163,33 +164,38 @@ class JSONStore(DataStore):
             print(ex.message)
             return False
 
-    async def update(self, table: str, data: Union[Dict,Any], key: Optional[Union[str,int]]) -> bool:
+    async def update(self, table: str, data: Union[Dict,Any], key: Optional[Union[str,int]]=None) -> bool:
         """ Expects to either replace a key-value pair, or several of these.
 
         Expects to either update a single `key`, setting its value to `data`,
         or expects to update all of the keys in both `data` and `table` to the
         value listed for them in `data`.
+
+        If `key` is supplied, it's value will be set to `data`, if `key` is not
+        supplied, or explicitly set to None (the default value), the entire
+        JSON dict will be updated and saved to disk.
+
         Also fails by returning False if any of the keys do not yet exist.
         """
         try:
-            if key:
-                self.store[table][key] = data
-                return True
+            if not key is None:
+                self._store[table][key] = data
+                return self._save()
             else:
                 for key in data.keys():
                     if not key in table.keys():
                         print(f"The key `{key}` does not exist, please use the set function for this")
                         return False
-                self.store[table].update(data)
-            return True
+                self._store[table].update(data)
+            return self._save()
         except ex:
             print(ex.message)
             return False
 
-    async def save(self) -> bool:
+    def _save(self) -> bool:
         try:
             with open(self.file, mode="w") as s:
-                json.dump(self.file, self.store, indent=self.indent if self.indent else 4)
+                json.dump(self._store, indent=self.indent if self.indent else 4)
             return True
         except ex:
             print(ex.message)
@@ -202,17 +208,104 @@ class SQLiteStore(DataStore):
     found at https://github.com/Rapptz/asqlite and all credit goes to the
     author Rapptz/Danny and the effort he made to create this library in order
     to use sqlite3 asynchronously.
+    The **readopts remainder of kwargs will be ignored in this subclass, since
+    a database initializes a connection object rather than opening a file in a
+    reading and/or writing mode.
     """
-    import asqlite
+    import asqlite as asql
+
+    def __init__(self, store: Union[str,Path], openopts: Dict={}, **readopts: Dict):
+        super().__init__(store=store)
+        self._store = asql.connect(self.file, **openopts)
 
     async def get(self, table: str, key: Union[str,int], column: str="id") -> Dict:
         """ Simple get function to query the DB for data from specific tables.
 
         This implementation adds an optional parameter `column` to select rows
         based on a specific value for a column.
+        The default column is `id`, the default behavior is to select all rows
+        where the value of `column` equals `key`.
+
+        Adds one key to the dict named `_SQLStoreInputQuery` for convenience.
+        This may be used for debugging, logging the generated queries or any
+        other use case that requires knowing what was passed to the database.
+
+        This function assumes only one row is returned. When more than one row
+        is expected, use `get_many` instead.
+
+        The code makes sure to add quotes around names. But if there's any
+        characters in the names that can break the query, you're on your own.
+        Sanitizing user input does not fall within the scope of this class!
+
         For more complex `SELECT` statements, use `get_complex()`.
         The new parameter defaults to the row's `id` field.
+
+        Returns the results of the first row matching the query.
+        A query with no results is considered an error.
         """
-        query = f"SELECT * FROM {table} WHERE {column}=={key}"
-        # Run the query here, I'm too tired to do this rn.
-        # db.conn(), db.execute(query), db.close()
+        key = "'"+key+"'" if type(key) is str else key
+        query = f"SELECT * FROM \"{table}\" WHERE \"{column}\"=={key};"
+        res = await self._store.execute(query)
+        fetch = await res.fetchone()
+        if fetch is None:
+            return {"error": f"The query did not match any results.",
+                    "_SQLStoreInputQuery": query}
+        keys = fetch.keys()
+        retval = {}
+        for key in keys:
+            retval[key] = fetch[key]
+        retval["_SQLStoreInputQuery"] = query
+        return retval
+
+    async def get_many(self, table: str, key: Union[str,int], column: str="id") -> List[Dict]:
+        """ The same as get, but returns all results in a list.
+
+        If a query only returns a single result, this function will still
+        return a list containing that one entry.
+        Might take a bit longer than `get` depending on the amount of results.
+        """
+        key = "'"+key+"'" if type(key) is str else key
+        query = f"SELECT * FROM \"{table}\" WHERE \"{column}\"=={key};"
+        res = await self._store.execute(query)
+        results = []
+        fetch = await res.fetchone()
+        if fetch is None:
+            return [{"error": f"The query did not match any results.",
+                    "_SQLStoreInputQuery": query}]
+        keys = fetch.keys()
+        # None evaluates to False. When the result list is over, the loop exits
+        while fetch:
+            val = {}
+            for key in keys:
+                val[key] = fetch[key]
+            results.append(val)
+            val["_SQLStoreInputQuery"] = query
+            fetch = await res.fetchone()
+        return results
+
+    async def set(self, table: str, data: Dict, key: Union[str,int]=None) -> bool:
+        """ Adds an entry to the given table, if it exists.
+
+        If a table does not exist yet, create it through `query_complex()`.
+        Make sure to add in any fields required for the given table. There is
+        no guarantee that whatever problem arises is due to a malformed input.
+        It might be because the requested table doesn't exist, or because a key
+        was given that's illegal.
+        Due to the way database systems work, the `key` argument defaults to
+        `None` and will be ignored. If a specific key is required, add it in
+        `data` instead. Usually, keys are fetched from other tables, or they
+        are automatically generated.
+        """
+        columns = ",".join(data.keys())
+        values = ",".join(data.values())
+        query = f"INSERT OR FAIL INTO {table} ({columns}) VALUES ({values});"
+        try:
+            await self._store.execute(query)
+            await self._store.commit()
+            return True
+        except ex:
+            print(ex.message)
+            return False
+
+    async def update(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
+        pass
