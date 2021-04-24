@@ -78,8 +78,8 @@ These dependencies are/will be at least:
 
 - Python version 3.5.3 or higher (for discord.py);
 - [`discord.py`](https://github.com/Rapptz/discord.py) and all of its dependencies
-	- Please note that when using the music or voice modules,
-	[`discord.py\[voice\]`](https://github.com/Rapptz/discord.py) is required instead;
+	- Please note that when using music or voice modules,
+	[`discord.py[voice]`](https://github.com/Rapptz/discord.py) is required instead;
 	- As well as [ffmpeg](https://ffmpeg.org/) for the music components.
 - [`apscheduler`](https://apscheduler.readthedocs.io/en/stable/index.html) for
 remind and repeat functionality;
