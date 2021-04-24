@@ -1,5 +1,7 @@
 {
-	"token": "",
-	"db": "./data/zwei.sdb",
-	"blacklist": []
+	"config": {
+		"token": "",
+		"db": "./data/zwei.sdb",
+		"blacklist": []
+	}
 }

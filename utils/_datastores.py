@@ -40,8 +40,10 @@ class DataStore(ABC):
     - data: the data to set or change for the selected row.
 
     This class is written with the intent of not raising during runtime.
-    Instead, either make the error value in the return descriptive or log the
+    Instead, either make the error value in the return descriptive, or log the
     failure for debugging and make sure the application handles this correctly.
+    The only exception is __init__, which may raise if a datastore can't be
+    opened in the way requested by the user.
     """
     def __init__(self, store: Union[str,Path], openopts: Dict={"mode": "r"}, **readopts: Dict):
         self.file = store
@@ -133,10 +135,14 @@ class JSONStore(DataStore):
         """
         super().__init__(store=store)
         if jsonopts["indent"]:
-            self.indent = jsonopts["indent"]
-        with open(store, **openopts) as ds:
-            temp_store = ds.read(**readopts)
+            self.jsonopts = jsonopts
+        try:
+            with open(store, **openopts) as ds:
+                temp_store = ds.read(**readopts)
             self._store = json.load(temp_store, **jsonopts)
+        except Exception as ex:
+            print(ex)
+            raise ex
 
     async def get(self, table: str, key: Union[str,int]) -> Dict:
         if table not in self._store: return {"error": f"The table `{table}` could not be found."}
@@ -196,7 +202,7 @@ class JSONStore(DataStore):
     def _save(self) -> bool:
         try:
             with open(self.file, mode="w") as s:
-                json.dump(self._store, indent=self.indent if self.indent else 4)
+                json.dump(self._store, **self.jsonopts)
             return True
         except Exception as ex:
             print(ex)
@@ -217,7 +223,11 @@ class SQLiteStore(DataStore):
 
     def __init__(self, store: Union[str,Path], openopts: Dict={}, **readopts: Dict):
         super().__init__(store=store)
-        self._store = asql.connect(self.file, **openopts)
+        try:
+            self._store = asql.connect(self.file, **openopts)
+        except Exception as ex:
+            print(ex)
+            raise ex
 
     async def get(self, table: str, key: Union[str,int], column: str="id") -> Dict:
         """ Simple get function to query the DB for data from specific tables.
@@ -327,7 +337,7 @@ class SQLiteStore(DataStore):
         columns = ",".join(data.keys())
         values = ",".join(data.values())
         key = "'"+key+"'" if type(key) is str else key
-        query = f"UPDATE OR FAIL INTO {table} ({columns}) VALUES ({values}) WHERE '{column}'=={key};"
+        query = f"UPDATE OR FAIL {table} SET ({columns})=({values}) WHERE '{column}'=={key};"
         try:
             await self._store.execute(query)
             await self._store.commit()
