@@ -10,11 +10,12 @@ Author: Riven Skaye
 # Type hints and function signatures
 from typing import List, Dict, Union, Any
 from collections.abc import Callable
+import json
 # Discord stuff
 import discord
 from discord.ext import commands
 # The cogs for this bot
-import cogs
+#import cogs
 # A list of classes in cogs goes here, so we can load them as cogs
 init_cogs = ()
 
@@ -24,26 +25,32 @@ def _prefix(bot, guild):
 class ZweiBot(commands.Bot): # No need to have it handle shards since we're small
     import utils._datastores as _ds
     def __init__(self):
+        print("Testing 1")
         try:
-            with open("./data/config.json") as config:
+            ### REWRTIE THIS TO USE _ds INSTEAD! ###
+            with open("data/config.json", "r") as config:
                 self._config = json.load(config)
             assert len(self._config["token"]) > 0, "No token was provided, please add it to the config."
         except AssertionError as ae:
-            print(ae.message)
+            print(ae)
             exit(1)
-        except:
-            print("Something went wrong trying to load ./data/config.json. Was it created properly?")
+        except Exception as ex:
+            print(ex)
+            print("Something went wrong trying to load data/config.json. Was it created properly?")
             exit(1)
+        print("Testing 2")
         intents = discord.Intents.default()
         intents.presences = True
-        super().__init__(command_prefix=self._prefix,
-                       description="Hey, I'm Zwei! What can I do for you? Who do we ban today?",
+        print("Testing 3")
+        super().__init__(command_prefix=_prefix,
+                       description="Hey, I'm Zwei! So I hear you need someone to do a job for you.",
                        case_insensitive=True, strip_after_prefix=True, heartbeat_timeout=180.0,
                        intents=intents)
+        print("Testing 4")
         self.bot_id = None # will be set in on_ready
-        for cog in init_cogs:
+        """for cog in init_cogs:
             # Load all cogs and pass self for any functions the cog may need
-            self.add_cog(cog(self))
+            self.add_cog(cog(self))"""
 
     async def on_ready(self):
         self.bot_id = self.user.id
