@@ -25,7 +25,6 @@ def _prefix(bot, guild):
 class ZweiBot(commands.Bot): # No need to have it handle shards since we're small
     import utils._datastores as _ds
     def __init__(self):
-        print("Testing 1")
         try:
             ### REWRTIE THIS TO USE _ds INSTEAD! ###
             with open("data/config.json", "r") as config:
@@ -38,19 +37,16 @@ class ZweiBot(commands.Bot): # No need to have it handle shards since we're smal
             print(ex)
             print("Something went wrong trying to load data/config.json. Was it created properly?")
             exit(1)
-        print("Testing 2")
         intents = discord.Intents.default()
         intents.presences = True
-        print("Testing 3")
         super().__init__(command_prefix=_prefix,
                        description="Hey, I'm Zwei! So I hear you need someone to do a job for you.",
                        case_insensitive=True, strip_after_prefix=True, heartbeat_timeout=180.0,
                        intents=intents)
-        print("Testing 4")
         self.bot_id = None # will be set in on_ready
-        """for cog in init_cogs:
+        for cog in init_cogs:
             # Load all cogs and pass self for any functions the cog may need
-            self.add_cog(cog(self))"""
+            self.add_cog(cog(self))
 
     async def on_ready(self):
         self.bot_id = self.user.id
