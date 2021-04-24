@@ -1,7 +1,8 @@
 from typing import Union, Dict, Optional, Any, List # Type hints
-from abc import ABC # Abstract Base Classes
+from abc import ABC, abstractmethod # Abstract Base Classes
 from pathlib import Path # For loading files and taking in Path objects
 import os # For OS-bound stuff like saving files
+from sqlite3 import Row
 
 class DataStore(ABC):
     """Object oriented approach for abstracting different types of datastores.
@@ -42,7 +43,7 @@ class DataStore(ABC):
     Instead, either make the error value in the return descriptive or log the
     failure for debugging and make sure the application handles this correctly.
     """
-    def __init__(self, store: Union[str,Path], openopts: Dict={mode: "r"}, **readopts: Dict):
+    def __init__(self, store: Union[str,Path], openopts: Dict={"mode": "r"}, **readopts: Dict):
         self.file = store
 
     @abstractmethod
@@ -114,7 +115,7 @@ class JSONStore(DataStore):
     """
     import json
 
-    async def __init__(self, store: Union[str,Path], openopts: Dict={mode: "r+"}, jsonopts: Dict={}, **readopts: Dict):
+    async def __init__(self, store: Union[str,Path], openopts: Dict={"mode": "r"}, jsonopts: Dict={}, **readopts: Dict):
         """ Open a file and read it as JSON, with possible read and json options.
 
         This method adds `jsonopts` to the init signature, to add in options
@@ -160,8 +161,8 @@ class JSONStore(DataStore):
             else:
                 print("This value already exists, use the update function instead!")
                 return False
-        except ex:
-            print(ex.message)
+        except Exception as ex:
+            print(ex)
             return False
 
     async def update(self, table: str, data: Union[Dict,Any], key: Optional[Union[str,int]]=None) -> bool:
@@ -188,8 +189,8 @@ class JSONStore(DataStore):
                         return False
                 self._store[table].update(data)
             return self._save()
-        except ex:
-            print(ex.message)
+        except Exception as ex:
+            print(ex)
             return False
 
     def _save(self) -> bool:
@@ -197,8 +198,8 @@ class JSONStore(DataStore):
             with open(self.file, mode="w") as s:
                 json.dump(self._store, indent=self.indent if self.indent else 4)
             return True
-        except ex:
-            print(ex.message)
+        except Exception as ex:
+            print(ex)
             return False
 
 class SQLiteStore(DataStore):
@@ -237,7 +238,7 @@ class SQLiteStore(DataStore):
         characters in the names that can break the query, you're on your own.
         Sanitizing user input does not fall within the scope of this class!
 
-        For more complex `SELECT` statements, use `get_complex()`.
+        For more complex `SELECT` statements, use `query_complex()`.
         The new parameter defaults to the row's `id` field.
 
         Returns the results of the first row matching the query.
@@ -257,15 +258,24 @@ class SQLiteStore(DataStore):
         retval["_SQLStoreInputQuery"] = query
         return retval
 
-    async def get_many(self, table: str, key: Union[str,int], column: str="id") -> List[Dict]:
+    async def get_many(self, table: str, key: Union[List[Union[str,int]],Union[str,int]], column: str="id") -> List[Dict]:
         """ The same as get, but returns all results in a list.
+
+        Takes a list of keys as well, for convenience. For using stuff like the
+        SQL `NOT` operator, or `BETWEEN` or any other complex check, use the
+        `query_complex()` function. It uses the `IN (keys)` operator to check
+        for any values matching the keys. If only a single key is given and the
+        field is unique, this is the same as `get()` except it returns a list.
 
         If a query only returns a single result, this function will still
         return a list containing that one entry.
         Might take a bit longer than `get` depending on the amount of results.
         """
-        key = "'"+key+"'" if type(key) is str else key
-        query = f"SELECT * FROM \"{table}\" WHERE \"{column}\"=={key};"
+        if type(key) is str:
+            key = "'"+key+"'"
+        elif type(key) is list:
+            key = ",".join(key)
+        query = f"SELECT * FROM \"{table}\" WHERE \"{column}\" IN ({key});"
         res = await self._store.execute(query)
         results = []
         fetch = await res.fetchone()
@@ -303,9 +313,42 @@ class SQLiteStore(DataStore):
             await self._store.execute(query)
             await self._store.commit()
             return True
-        except ex:
-            print(ex.message)
+        except Exception as ex:
+            print(ex)
             return False
 
-    async def update(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
-        pass
+    async def update(self, table: str, data: Union[Dict,Any], key: Union[str,int], column: str="id") -> bool:
+        """ Updates an entry in a table, if it exists.
+
+        If a table doesn't exist yet, create it through `query_complex()`.
+        Updates a row in a table using the key as an exact matching pattern for
+        the specified column. By default, this is the id column for the table.
+        """
+        columns = ",".join(data.keys())
+        values = ",".join(data.values())
+        key = "'"+key+"'" if type(key) is str else key
+        query = f"UPDATE OR FAIL INTO {table} ({columns}) VALUES ({values}) WHERE '{column}'=={key};"
+        try:
+            await self._store.execute(query)
+            await self._store.commit()
+            return True
+        except Exception as ex:
+            print(ex)
+            return False
+
+    async def query_complex(self, query: str, commit: bool=False) -> Union[Row,Dict]:
+        """ A simple wrapper that executes a given query, sanitize user input!
+
+        This class is literally just going to execute whatever query it gets,
+        without attempting to sanitize any input or whatever. This is only
+        provided for edgecases where there needs to be more freedom to change
+        the database from the code.
+        It takes one parameter besides the query; a boolean whether or not it
+        should call `commit` on the connection object. This defaults to False
+        as the function should
+        """
+        try:
+            return await self._store.execute(query)
+        except Exception as ex:
+            print(ex)
+            return {"error": ex, "_SQLStoreInputQuery": query}
