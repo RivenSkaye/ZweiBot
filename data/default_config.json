@@ -1,5 +1,5 @@
 {
 	"token": "",
-	"db": "./data/zwei.sqlite",
+	"db": "./data/zwei.sdb",
 	"blacklist": []
 }
