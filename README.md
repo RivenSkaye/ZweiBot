@@ -52,36 +52,3 @@ that she can access normally. This means direct access links to files, links to
 files hosted on services like fiery or pomf, or perhaps even local files.
 So long as `ffmpeg` can read and transcode it for use with Discord, Zwei will be
 happy to stream it into any voice channel she can access.
-
-# Self-hosting
-
-_Zwei's code is freely available, the image used for her avatar is not included
-since I asked the artist who made it for permission to use it. If you wish to
-host your own Zwei, find a different image and preferably use a different name
-for the bot as well._
-
-The act of self-hosting a bot is actually nothing more than running the code
-that makes it work on your own VPS or computer. It's recommended to use either
-a "basement PC" that isn't actively in use by people so as not to interfere with
-normal computer usage, or to look into VPS/hosting solutions with a third party.
-
-_The Zwei developers are not responsible for these things and we can't help you
-get set up with either of these systems. Though the support server (once there
-is one) may give out advice and personal recommendations, you are liable for
-your own actions. The code is provided as-is and a list of dependencies is
-[included in this file](#Dependencies). No guarantee is given that it may work
-and none of the people responsible for developing this code can be held
-responsible for any damages, breakage or mistakes made._
-
-In order to self-host Zwei there are a few dependencies that need to be met.
-These dependencies are/will be at least:
-
-- Python version 3.5.3 or higher (for discord.py);
-- [`discord.py`](https://github.com/Rapptz/discord.py) and all of its dependencies
-	- Please note that when using music or voice modules,
-	[`discord.py[voice]`](https://github.com/Rapptz/discord.py) is required instead;
-	- As well as [ffmpeg](https://ffmpeg.org/) for the music components.
-- [`apscheduler`](https://apscheduler.readthedocs.io/en/stable/index.html) for
-remind and repeat functionality;
-- [sqlite3](https://sqlite.org/index.html) for databases (optional);
-- [`asqlite`](https://github.com/Rapptz/asqlite) for the Database code (optional);
