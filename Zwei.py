@@ -29,12 +29,10 @@ class ZweiBot(commands.Bot, case_insensitive=True): # No need to have it handle 
             print(ae)
             exit(1)
         self._db = database
-        intents = discord.Intents.default()
-        intents.presences = True
+        intents = discord.Intents.all() # Change this if you don't need some
         super().__init__(command_prefix=cmd_prefix,
-                       description="Hey, I'm Zwei! So I hear you need someone to do a job for you.",
-                       case_insensitive=True, strip_after_prefix=True, heartbeat_timeout=180.0,
-                       intents=intents)
+                         case_insensitive=True, strip_after_prefix=True,
+                         heartbeat_timeout=180.0, intents=intents)
         self.bot_id = None # will be set in on_ready
         for cog in dir(cogs):
             if not cog.startswith("__"):
