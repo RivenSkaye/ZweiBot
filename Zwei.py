@@ -5,7 +5,9 @@ and performs checks on the config for which modules to load. It also contains
 a few functions that proxy commands to different optional modules, like using
 JSON or SQLite for data storage and such.
 
-Author: Riven Skaye
+Authors:    Riven Skaye
+            TheJoseph98
+            bthen13
 """
 # Type hints and function signatures
 from typing import Union, Optional
