@@ -8,7 +8,7 @@ JSON or SQLite for data storage and such.
 Author: Riven Skaye
 """
 # Type hints and function signatures
-from typing import List, Dict, Union, Any
+from typing import Union, Optional
 from collections.abc import Callable
 # Uptime
 from datetime import datetime
@@ -59,8 +59,41 @@ class ZweiBot(commands.Bot, case_insensitive=True): # No need to have it handle 
         self.bot_id = self.user.id
         await self.change_presence(activity=discord.Activity(name="Living a life of freedom!", type=discord.ActivityType.custom))
         self.starttime = datetime.utcnow()
+        # This is needed for user-based purging of messages
+        self._purgetarget = None
 
     @commands.Bot.Command(name="uptime", brief="List uptime for the bot", hidden=True)
     @commands.is_owner()
     async def uptime(self, ctx):
-        ctx.send(str(datetime.utcnow() - self.starttime))
+        """Lists total uptime for the bot, in a human readable format.
+
+        Lists the time as `xx days, hh:mm:ss`. This can be used indicatively
+        for debugging purposes (for example long term usage filling up memory)
+        and as a gimmick for the owners. Honestly, it's just here to test the
+        decorators and to check if the bot functions at all.
+        """
+        uptime = str(datetime.utcnow() - self.starttime)
+        await ctx.send(f"I've been working my hardest for {uptime} now!")
+
+    def is_author(self, msg) -> bool:
+        return msg.author == self._purgetarget
+
+    @commands.Bot.Command(name="purge", aliases=["prune","massdelete","massdel"])
+    @commands.has_permissions(manage_messages=True)
+    async def purge(self, ctx, amount: int=5, user: Optional[Union[discord.abc.User,int]]=None):
+        if amount < 1:
+            await ctx.send("Could you stop trying to purge thin air?")
+            return
+        elif amount > 250:
+            await ctx.send("Please keep the amount of messages to be purged somewhat manageable.\nNo more than 250 at a time, okay?")
+            return
+        remainder = amount
+        user = await ctx.guild.get_member(user) if isinstance(user, int) else user
+        # None == None will always return True, so no user means any author
+        self._purgetarget = user
+        while remainder > 0:
+            limit = 100 if remainder > 99 else remainder
+            await ctx.channel.purge(limit=limit, check=self._is_author, bulk=True, oldest_first=True)
+            remainder = remainder - limit
+        usermsg = f" sent by {user.name}" if user else ""
+        await ctx.send(f"I deleted the last {amount} of messages{usermsg} for you." if amount > 1 else "I deleted the last message{usermsg}. You could've done that faster manually.")
