@@ -117,7 +117,7 @@ class JSONStore(DataStore):
     """
     import json
 
-    async def __init__(self, store: Union[str,Path], openopts: Dict={"mode": "r"}, jsonopts: Dict={}, **readopts: Dict):
+    def __init__(self, store: Union[str,Path], openopts: Dict={"mode": "r"}, jsonopts: Dict={}, **readopts: Dict):
         """ Open a file and read it as JSON, with possible read and json options.
 
         This method adds `jsonopts` to the init signature, to add in options
@@ -134,7 +134,7 @@ class JSONStore(DataStore):
         exist yet.
         """
         super().__init__(store=store)
-        if jsonopts["indent"]:
+        if "indent" in jsonopts:
             self.jsonopts = jsonopts
         try:
             with open(store, **openopts) as ds:
@@ -145,9 +145,10 @@ class JSONStore(DataStore):
             raise ex
 
     async def get(self, table: str, key: Union[str,int]) -> Dict:
+        key = str(key)
         if table not in self._store: return {"error": f"The table `{table}` could not be found."}
         if key not in self._store[table]: return {"error": f"They key `{key}` does not exist in this document."}
-        return self._store[table][key] # This might return {key: None} which can be valid in Python
+        return {key: self._store[table][key]} # This might return {key: None} which can be valid in Python
 
     async def set(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
         """ A function to add a single new key-value pair to the datastore.
@@ -159,6 +160,7 @@ class JSONStore(DataStore):
         Returns True if successful, or False if not successful.
         When False is returned, check std.out for error information.
         """
+        key = str(key)
         try:
             if table not in self._store: return {"error": f"The table `{table}` could not be found."}
             if not self._store[table][key]:
@@ -184,6 +186,7 @@ class JSONStore(DataStore):
 
         Also fails by returning False if any of the keys do not yet exist.
         """
+        key = str(key)
         try:
             if not key is None:
                 self._store[table][key] = data

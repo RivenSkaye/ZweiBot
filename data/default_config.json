@@ -3,5 +3,6 @@
 		"token": "",
 		"db": "./data/zwei.sdb",
 		"blacklist": []
-	}
+	},
+	"prefixes": {}
 }

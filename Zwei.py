@@ -66,6 +66,7 @@ class ZweiBot(commands.Bot, case_insensitive=True): # No need to have it handle 
 
     @commands.Bot.Command(name="purge", aliases=["prune","massdelete","massdel"])
     @commands.has_permissions(manage_messages=True)
+    @commands.guild_only()
     async def purge(self, ctx, amount: int=5, user: Optional[Union[discord.abc.User,int]]=None):
         if amount < 1:
             await ctx.send("Could you stop trying to purge thin air?")
@@ -83,3 +84,24 @@ class ZweiBot(commands.Bot, case_insensitive=True): # No need to have it handle 
             remainder = remainder - limit
         usermsg = f" sent by {user.name}" if user else ""
         await ctx.send(f"I deleted the last {amount} of messages{usermsg} for you." if amount > 1 else "I deleted the last message{usermsg}. You could've done that faster manually.")
+
+    @commands.Bot.Command(name="prefix")
+    @commands.guild_only()
+    async def prefix(self, ctx, *, new_prefix: Optional[str]=None):
+        key = str(ctx.guild.id)
+        server_prefix = self._conf.get(table="prefixes", key=key)
+        if not new_prefix:
+            server_prefix = ";" if server_prefix["error"] else server_prefix[key]
+            await ctx.send(f"The current prefix for the server is {server_prefix}")
+            return
+        else:
+            new_prefix.replace("set ", "") # A load of people do this, smh
+            if server_prefix["error"]:
+                success = self._config.set(table="prefixes", data=new_prefix, key=key)
+            else:
+                success = self._config.update(table="prefixes", data=new_prefix, key=key)
+
+            if success:
+                await ctx.send(f"Prefix changed to {new_prefix}")
+            else:
+                await ctx.send("I couldn't change the prefix, something went wrong!")
