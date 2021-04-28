@@ -115,7 +115,9 @@ class JSONStore(DataStore):
     This is written for data that doesn't require high integrity and that's
     not expected to become very large. For example the bot start config, that
     only ever needs to be read by the application, is good to have in JSON
-    files so that it can be very quickly opened and read for data
+    files so that it can be very quickly opened and read for data.
+
+    Provides all methods synchronously as well, for convenience.
     """
 
     def __init__(self, store: Union[str,Path], openopts: Dict={"mode": "r"}, jsonopts: Dict={}, **readopts: Dict):
@@ -150,6 +152,12 @@ class JSONStore(DataStore):
         if key not in self._store[table]: return {"error": f"They key `{key}` does not exist in this document."}
         return {key: self._store[table][key]} # This might return {key: None} which can be valid in Python
 
+    def get_sync(self, table: str, key: Union[str,int]) -> Dict:
+        key = str(key)
+        if table not in self._store: return {"error": f"The table `{table}` could not be found."}
+        if key not in self._store[table]: return {"error": f"They key `{key}` does not exist in this document."}
+        return {key: self._store[table][key]} # This might return {key: None} which can be valid in Python
+
     async def set(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
         """ A function to add a single new key-value pair to the datastore.
 
@@ -160,6 +168,20 @@ class JSONStore(DataStore):
         Returns True if successful, or False if not successful.
         When False is returned, check std.out for error information.
         """
+        key = str(key)
+        try:
+            if table not in self._store: return {"error": f"The table `{table}` could not be found."}
+            if not self._store[table][key]:
+                self._store[table][key] = data
+                return self._save()
+            else:
+                print("This value already exists, use the update function instead!")
+                return False
+        except Exception as ex:
+            print(ex)
+            return False
+
+    def set_sync(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
         key = str(key)
         try:
             if table not in self._store: return {"error": f"The table `{table}` could not be found."}
@@ -186,6 +208,23 @@ class JSONStore(DataStore):
 
         Also fails by returning False if any of the keys do not yet exist.
         """
+        key = str(key)
+        try:
+            if not key is None:
+                self._store[table][key] = data
+                return self._save()
+            else:
+                for key in data.keys():
+                    if not key in table.keys():
+                        print(f"The key `{key}` does not exist, please use the set function for this")
+                        return False
+                self._store[table].update(data)
+            return self._save()
+        except Exception as ex:
+            print(ex)
+            return False
+
+    def update_sync(self, table: str, data: Union[Dict,Any], key: Optional[Union[str,int]]=None) -> bool:
         key = str(key)
         try:
             if not key is None:
