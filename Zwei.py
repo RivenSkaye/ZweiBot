@@ -9,13 +9,13 @@ Authors:    Riven Skaye
             TheJoseph98
             bthen13
 """
+import asyncio
 # Type hints and function signatures
 from typing import Union, Optional
 from collections.abc import Callable
 from utils._datastores import DataStore
 # Uptime
 from datetime import datetime
-import json ### Yeet this ###
 # Discord stuff
 import discord
 from discord.ext import commands
@@ -26,7 +26,8 @@ class ZweiBot(commands.Bot, case_insensitive=True): # No need to have it handle 
     def __init__(self, cmd_prefix: Callable, config: DataStore, database: DataStore):
         self._config = config
         try:
-            assert len(self._config.get(table="config", key="token")) > 0, "No token was provided, please add it to the config."
+            self._token = asyncio.run(self._config.get("config", "token"))
+            assert self._token > 0, "No token was provided, please add it to the config."
         except AssertionError as ae:
             print(ae)
             exit(1)
@@ -45,8 +46,6 @@ class ZweiBot(commands.Bot, case_insensitive=True): # No need to have it handle 
         self.bot_id = self.user.id
         await self.change_presence(activity=discord.Activity(name="Living a life of freedom!", type=discord.ActivityType.custom))
         self.starttime = datetime.utcnow()
-        # This is needed for user-based purging of messages
-        self._purgetarget = None
 
     @commands.Bot.Command(name="uptime", brief="List uptime for the bot", hidden=True)
     @commands.is_owner()
@@ -59,49 +58,38 @@ class ZweiBot(commands.Bot, case_insensitive=True): # No need to have it handle 
         decorators and to check if the bot functions at all.
         """
         uptime = str(datetime.utcnow() - self.starttime)
-        await ctx.send(f"I've been working my hardest for {uptime} now!")
-
-    def is_author(self, msg) -> bool:
-        return msg.author == self._purgetarget
-
-    @commands.Bot.Command(name="purge", aliases=["prune","massdelete","massdel"])
-    @commands.has_permissions(manage_messages=True)
-    @commands.guild_only()
-    async def purge(self, ctx, amount: int=5, user: Optional[Union[discord.abc.User,int]]=None):
-        if amount < 1:
-            await ctx.send("Could you stop trying to purge thin air?")
-            return
-        elif amount > 250:
-            await ctx.send("Please keep the amount of messages to be purged somewhat manageable.\nNo more than 250 at a time, okay?")
-            return
-        remainder = amount
-        user = await ctx.guild.get_member(user) if isinstance(user, int) else user
-        # None == None will always return True, so no user means any author
-        self._purgetarget = user
-        while remainder > 0:
-            limit = 100 if remainder > 99 else remainder
-            await ctx.channel.purge(limit=limit, check=self._is_author, bulk=True, oldest_first=True)
-            remainder = remainder - limit
-        usermsg = f" sent by {user.name}" if user else ""
-        await ctx.send(f"I deleted the last {amount} of messages{usermsg} for you." if amount > 1 else "I deleted the last message{usermsg}. You could've done that faster manually.")
+        await ctx.send(f"I've been giving it my all for {uptime} now!")
 
     @commands.Bot.Command(name="prefix")
     @commands.guild_only()
     async def prefix(self, ctx, *, new_prefix: Optional[str]=None):
+        """ Tells you the bot's current prefix in this server, or changes it.
+
+        If the command is used without any arguments, Zwei will reply with the
+        current prefix. If any arguments are given, the prefix will be changed
+        to whatever the user sent.
+        Before processing, any sequence of `set ` will be removed. The keyword
+        is NOT required for changing the prefix, but a lot of users are idiots.
+        """
         key = str(ctx.guild.id)
-        server_prefix = self._conf.get(table="prefixes", key=key)
+        server_prefix = await self._conf.get(table="prefixes", key=key)
+        pref = ";" if server_prefix["error"] else server_prefix[key]
+        pref.replace("`", "\`") # Display failsafe
         if not new_prefix:
-            server_prefix = ";" if server_prefix["error"] else server_prefix[key]
-            await ctx.send(f"The current prefix for the server is {server_prefix}")
+            await ctx.reply(f"I'll be listening to any messages starting with `{pref}`.")
             return
         else:
+            has_perm = await ctx.message.author.guild_permissions.manage_guild
+            if not has_perm:
+                await ctx.reply(f"Changing my prefix requires the `Manage Server` permission.\nYou don't seem to have this, so I'll keep listening to `{pref}` for now.")
             new_prefix.replace("set ", "") # A load of people do this, smh
             if server_prefix["error"]:
-                success = self._config.set(table="prefixes", data=new_prefix, key=key)
+                success = await self._config.set(table="prefixes", data=new_prefix, key=key)
             else:
-                success = self._config.update(table="prefixes", data=new_prefix, key=key)
+                success = await self._config.update(table="prefixes", data=new_prefix, key=key)
 
             if success:
-                await ctx.send(f"Prefix changed to {new_prefix}")
+                new_prefix = new_prefix.replace("`", "\`")
+                await ctx.send(f"Prefix changed to `{new_prefix}`")
             else:
-                await ctx.send("I couldn't change the prefix, something went wrong!")
+                await ctx.send("I couldn't change the prefix, something went wrong!\nContact the devs for assistance")
