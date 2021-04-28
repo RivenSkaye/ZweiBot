@@ -4,5 +4,11 @@
 		"db": "./data/zwei.sdb",
 		"blacklist": []
 	},
+	"init": {
+		"cogs": {
+			"base": "Base",
+			"modtools": "Moderation"
+		}
+	},
 	"prefixes": {}
 }
