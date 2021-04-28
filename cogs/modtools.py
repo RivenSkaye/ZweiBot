@@ -14,7 +14,7 @@ class ModTools(commands.Cog, name="Moderation"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.Command(name="purge", aliases=["prune","massdelete","massdel"])
+    @commands.command(name="purge", aliases=["prune","massdelete","massdel"])
     @commands.has_permissions(manage_messages=True)
     @commands.guild_only()
     async def purge(self, ctx, amount: int=5):
@@ -33,7 +33,7 @@ class ModTools(commands.Cog, name="Moderation"):
                 asyncio.sleep(0.25)
         await ctx.send(f"I deleted the last {amount} of messages for you." if amount > 1 else "I deleted the last message. _You could've done that faster manually._")
 
-    @commands.Command(name="kick", brief="Kicks a user from the server", aliases=["remove","prod","eject"])
+    @commands.command(name="kick", brief="Kicks a user from the server", aliases=["remove","prod","eject"])
     @commands.has_permissions(kick_members=True)
     @commands.guild_only()
     async def kick(self, ctx, user: Union[discord.Member,int], *, reason: str="You broke a rule."):
@@ -49,3 +49,6 @@ class ModTools(commands.Cog, name="Moderation"):
             await user.create_dm()
         await user.kick()
         await ctx.send(kickmsg)
+
+def setup(bot):
+    bot.add_cog(ModTools(bot))
