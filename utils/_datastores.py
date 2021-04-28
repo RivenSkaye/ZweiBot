@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod # Abstract Base Classes
 from pathlib import Path # For loading files and taking in Path objects
 import os # For OS-bound stuff like saving files
 from sqlite3 import Row
+import json
+import asqlite as asql
 
 class DataStore(ABC):
     """Object oriented approach for abstracting different types of datastores.
@@ -115,7 +117,6 @@ class JSONStore(DataStore):
     only ever needs to be read by the application, is good to have in JSON
     files so that it can be very quickly opened and read for data
     """
-    import json
 
     def __init__(self, store: Union[str,Path], openopts: Dict={"mode": "r"}, jsonopts: Dict={}, **readopts: Dict):
         """ Open a file and read it as JSON, with possible read and json options.
@@ -138,8 +139,7 @@ class JSONStore(DataStore):
             self.jsonopts = jsonopts
         try:
             with open(store, **openopts) as ds:
-                temp_store = ds.read(**readopts)
-            self._store = json.load(temp_store, **jsonopts)
+                self._store = json.load(ds, **jsonopts)
         except Exception as ex:
             print(ex)
             raise ex
@@ -222,7 +222,6 @@ class SQLiteStore(DataStore):
     a database initializes a connection object rather than opening a file in a
     reading and/or writing mode.
     """
-    import asqlite as asql
 
     def __init__(self, store: Union[str,Path], openopts: Dict={}, **readopts: Dict):
         super().__init__(store=store)
