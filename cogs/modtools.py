@@ -14,7 +14,27 @@ class ModTools(commands.Cog, name="Moderation"):
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.Command(name="purge", aliases=["prune","massdelete","massdel"])
+    @commands.has_permissions(manage_messages=True)
+    @commands.guild_only()
+    async def purge(self, ctx, amount: int=5):
+        if amount < 1:
+            await ctx.send("Could you stop trying to purge thin air?")
+            return
+        elif amount > 250:
+            await ctx.send("Please keep the amount of messages to be purged somewhat manageable.\nNo more than 250 at a time, okay?")
+            return
+        remainder = amount
+        while remainder > 0:
+            limit = 100 if remainder > 99 else remainder
+            await ctx.channel.purge(limit=limit, bulk=True, oldest_first=True)
+            remainder = remainder - limit
+            if remainder > 0:
+                asyncio.sleep(0.25)
+        await ctx.send(f"I deleted the last {amount} of messages for you." if amount > 1 else "I deleted the last message. _You could've done that faster manually._")
+
     @commands.Command(name="kick", brief="Kicks a user from the server", aliases=["remove","prod","eject"])
+    @commands.has_permissions(kick_members=True)
     @commands.guild_only()
     async def kick(self, ctx, user: Union[discord.Member,int], *, reason: str="You broke a rule."):
         """ Kicks the user and notifies them why, if a reason was given.
