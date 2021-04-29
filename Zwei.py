@@ -38,6 +38,14 @@ class ZweiBot(commands.AutoShardedBot):
             self.load_extension(f"cogs.{cog}")
 
     async def on_ready(self):
+        try:
+            await self._db._conn()
+        except Exception as ex:
+            print("Couldn't open `./data/zweiDB.sdb`. Please make sure that the file exists.")
+            print("if it doesn't, change the name of `default_zweiDB.sdb` for a clean start.")
+            print("====================")
+            print(ex)
+            exit(1)
         self.bot_id = self.user.id
         await self.change_presence(activity=discord.Game(name="with Kuro | ;help", afk=False))
         self.starttime = datetime.utcnow()
@@ -49,4 +57,3 @@ class ZweiBot(commands.AutoShardedBot):
             print("Couldn't close all database connections, PANIC!")
             exit(1)
         await super().close()
-
