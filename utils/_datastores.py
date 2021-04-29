@@ -311,6 +311,14 @@ class SQLiteStore(DataStore):
         self._store = None
         self._openopts = openopts
 
+    async def _conn(self):
+        """ Initiates the actual connection, this is checked on every command.
+
+        If anyone knows how to await shit in __init__, please tell us.
+        """
+        if self._store is None:
+            self._store = await asql.connect(self.file, **self._openopts)
+
     async def get(self, table: str, key: Union[str,int], column: str="id") -> Dict:
         """ Simple get function to query the DB for data from specific tables.
 
@@ -336,7 +344,7 @@ class SQLiteStore(DataStore):
         Returns the results of the first row matching the query.
         A query with no results is considered an error.
         """
-        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
+        await self._conn()
         key = "'"+key+"'" if type(key) is str else key
         query = f"SELECT * FROM \"{table}\" WHERE \"{column}\"=={key};"
         res = await self._store.execute(query)
@@ -364,7 +372,7 @@ class SQLiteStore(DataStore):
         return a list containing that one entry.
         Might take a bit longer than `get` depending on the amount of results.
         """
-        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
+        await self._conn()
         if type(key) is str:
             key = "'"+key+"'"
         elif type(key) is list:
@@ -400,7 +408,7 @@ class SQLiteStore(DataStore):
         `data` instead. Usually, keys are fetched from other tables, or they
         are automatically generated.
         """
-        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
+        await self._conn()
         columns = ",".join(data.keys())
         values = ",".join(data.values())
         query = f"INSERT OR FAIL INTO {table} ({columns}) VALUES ({values});"
@@ -419,7 +427,7 @@ class SQLiteStore(DataStore):
         Updates a row in a table using the key as an exact matching pattern for
         the specified column. By default, this is the id column for the table.
         """
-        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
+        await self._conn()
         columns = ",".join(data.keys())
         values = ",".join(data.values())
         key = "'"+key+"'" if type(key) is str else key
@@ -439,7 +447,7 @@ class SQLiteStore(DataStore):
         executing the DELETE statement, then commits the transaction and
         returns whatever the return value was for the `get` call
         """
-        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
+        await self._conn()
         val = self.get(table=table, key=key, column=column)
         if not "error" in val.keys():
             # If it didn't error, it exists and we delete it.
@@ -474,7 +482,7 @@ class SQLiteStore(DataStore):
         should call `commit` on the connection object. This defaults to False
         as the function should
         """
-        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
+        await self._conn()
         try:
             await self._store.execute(query)
             return self._store.commit() if commit else True
