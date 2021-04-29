@@ -19,18 +19,12 @@ import utils._datastores as _ds
 from discord.ext import commands
 
 try:
+    # If you're not using JSON, good luck figuring it out!
     bot_conf = _ds.JSONStore("data/config.json")
+    bot_db = self._db = _ds.SQLiteStore("./data/zweiDB.sdb")
 except Exception as ex:
     print("For your convenience, an empty `default_config.json` and `default_zweiDB.sdb` have been provided.")
     print("It is recommended to copy these to the same names without the `default_` prefix for a clean start.")
-    print("====================")
-    print(ex)
-    exit(1)
-try:
-    bot_db = _ds.SQLiteStore("./data/zweiDB.sdb")
-except Exception as ex:
-    print("Couldn't open `./data/zweiDB.sdb`. Please make sure that the file exists.")
-    print("if it doesn't, change the name of `default_zweiDB.sdb` for a clean start.")
     print("====================")
     print(ex)
     exit(1)
