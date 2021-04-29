@@ -18,6 +18,13 @@ class ModTools(commands.Cog, name="Moderation"):
     @commands.has_permissions(manage_messages=True)
     @commands.guild_only()
     async def purge(self, ctx, amount: int=5):
+        """ Deletes the last x messages, 5 by default. Max 250 at a time!
+
+        Performs a check, if any of the messages are pinned, they're not
+        deleted. They do still count towards the 250 total.
+        If the messages aren't pinned, they're deleted if the user calling
+        the command has all proper permissions.
+        """
         def _is_pinned(msg) -> bool:
             return not msg.pinned
         if amount < 1:
