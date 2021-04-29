@@ -39,5 +39,14 @@ class ZweiBot(commands.AutoShardedBot):
 
     async def on_ready(self):
         self.bot_id = self.user.id
-        await self.change_presence(activity=discord.Activity(name="Living a life of freedom!", type=discord.ActivityType.custom))
+        await self.change_presence(activity=discord.Game(name="with Kuro | ;help", afk=False))
         self.starttime = datetime.utcnow()
+
+    async def close(self):
+        cfg = await self._config.close()
+        dbc = await self._db.close()
+        if not cfg and dbc:
+            print("Couldn't close all database connections, PANIC!")
+            exit(1)
+        await super().close()
+
