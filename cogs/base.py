@@ -61,16 +61,28 @@ class BaseCommands(commands.Cog, name="Base"):
             else:
                 await ctx.send("I couldn't change the prefix, something went wrong!\nContact the devs for assistance")
 
-    @commands.command(name="shutdown", aliases=["exit", "panic"])
-    @commands.owner_only()
-    async def shutdown(self, ctx, time: Optional[int]):
+    @commands.command(name="shutdown", aliases=["exit", "panic", "die"])
+    @commands.is_owner()
+    async def shutdown(self, ctx, time: int=1):
         """ Shuts down after optionally <time> seconds. Owner only.
 
         If you ever see this getting called, wrap up your shit and exit.
         """
-        await ctx.reply(f"I need some rest, so I'll give you {time} seconds before I go and take a nap")
-        await sleep(time)
-        exit(0)
+        timetxt = f"{time} seconds" if time > 1 else "1 second"
+        await ctx.reply(f"I need some rest, so I'll give you {timetxt} before I go and take a nap")
+        await sleep(time if time > 0 else 1)
+        await self.bot.close()
+
+    @commands.command(name="say")
+    async def say(self, ctx, *, text: str, embed: Optional[str]=None):
+        """ Make the bot repeat what you say. Embeds don't work yet.
+
+        Parse the user input and check for any role mentions and the if the
+        user has the appropriate permissions to actually mention them. If the
+        user is adding the role mention into an embed, let it be since that's
+        not going to send a notification to anyone anyways.
+        """
+        await ctx.send(text)
 
 def setup(bot):
     bot.add_cog(BaseCommands(bot))
