@@ -18,6 +18,8 @@ class ModTools(commands.Cog, name="Moderation"):
     @commands.has_permissions(manage_messages=True)
     @commands.guild_only()
     async def purge(self, ctx, amount: int=5):
+        def _is_pinned(msg) -> bool:
+            return not msg.pinned
         if amount < 1:
             await ctx.send("Could you stop trying to purge thin air?")
             return
@@ -28,7 +30,7 @@ class ModTools(commands.Cog, name="Moderation"):
         remainder = actual_amount
         while remainder > 0:
             limit = 100 if remainder > 99 else remainder
-            await ctx.channel.purge(limit=limit, bulk=True, oldest_first=False)
+            await ctx.channel.purge(limit=limit, bulk=True, oldest_first=False, check=_is_pinned)
             remainder = remainder - limit
             if remainder > 0:
                 asyncio.sleep(0.25)
