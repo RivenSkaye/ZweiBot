@@ -21,7 +21,7 @@ from discord.ext import commands
 try:
     # If you're not using JSON, good luck figuring it out!
     bot_conf = _ds.JSONStore("data/config.json")
-    bot_db = self._db = _ds.SQLiteStore("./data/zweiDB.sdb")
+    bot_db = _ds.SQLiteStore("./data/zweiDB.sdb")
 except Exception as ex:
     print("For your convenience, an empty `default_config.json` and `default_zweiDB.sdb` have been provided.")
     print("It is recommended to copy these to the same names without the `default_` prefix for a clean start.")
