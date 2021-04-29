@@ -34,7 +34,7 @@ class ModTools(commands.Cog, name="Moderation"):
             remainder = remainder - limit
             if remainder > 0:
                 asyncio.sleep(0.25)
-        await ctx.send(f"I've deleted the last {amount} of messages for you." if amount > 1 else "I've deleted the last message. _You could've done that faster manually._")
+        await ctx.send(f"I've deleted the last {amount} messages for you, unless they were pinned." if amount > 1 else "I've deleted the last message, unless it was pinned. _You could've done that faster manually._")
 
     @commands.command(name="kick", brief="Kicks a user from the server", aliases=["remove","prod","eject"])
     @commands.has_permissions(kick_members=True)
