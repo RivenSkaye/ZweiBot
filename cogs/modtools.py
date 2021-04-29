@@ -24,14 +24,15 @@ class ModTools(commands.Cog, name="Moderation"):
         elif amount > 250:
             await ctx.send("Please keep the amount of messages to be purged somewhat manageable.\nNo more than 250 at a time, okay?")
             return
-        remainder = amount
+        actual_amount = amount + 1
+        remainder = actual_amount
         while remainder > 0:
             limit = 100 if remainder > 99 else remainder
-            await ctx.channel.purge(limit=limit, bulk=True, oldest_first=True)
+            await ctx.channel.purge(limit=limit, bulk=True, oldest_first=False)
             remainder = remainder - limit
             if remainder > 0:
                 asyncio.sleep(0.25)
-        await ctx.send(f"I deleted the last {amount} of messages for you." if amount > 1 else "I deleted the last message. _You could've done that faster manually._")
+        await ctx.send(f"I've deleted the last {amount} of messages for you." if amount > 1 else "I've deleted the last message. _You could've done that faster manually._")
 
     @commands.command(name="kick", brief="Kicks a user from the server", aliases=["remove","prod","eject"])
     @commands.has_permissions(kick_members=True)
