@@ -92,6 +92,35 @@ class DataStore(ABC):
         """
         pass
 
+    @abstractmethod
+    async def delete(self, table: str, key: Union[str,int]) -> Dict:
+        """ Returns a value or row from the datastore and deletes it.
+
+        This function first performs a `get` call to make sure the value exists
+        and subsequently deletes the value from the datastore. For JSON objects
+        this can be achieved using the `pop` method on the dict that represents
+        it within the Python env. For most other datastores, this requires two
+        operations, either one of which could theoretically fail.
+
+        It is recommended to implement this function in the form of
+        ```
+        async def delete(self, table, key):
+            val = self.get(table=table, key=key)
+            <delete the value from the datastore in the proper manner>
+            return val if val else {"error": "descriptive error message"}
+        """
+        pass
+
+    @abstractmethod
+    async def close(self) -> bool:
+        """Close the database and disconnect if applicable for the datastore
+
+        This method is purely for teardown purposes and any implementation of
+        it should save the datastore if that hasn't been done during the last
+        operation.
+        """
+        pass
+
     async def save(self) -> bool:
         """ Save the database to its file. This is optional to implement.
 
@@ -137,14 +166,22 @@ class JSONStore(DataStore):
         exist yet.
         """
         super().__init__(store=store)
-        if "indent" in jsonopts:
-            self.jsonopts = jsonopts
+        self.jsonopts = jsonopts
         try:
             with open(store, **openopts) as ds:
                 self._store = json.load(ds, **jsonopts)
         except Exception as ex:
             print(ex)
             raise ex
+
+    def _save(self) -> bool:
+        try:
+            with open(self.file, mode="w") as s:
+                json.dump(self._store, s, **self.jsonopts)
+            return True
+        except Exception as ex:
+            print(ex)
+            return False
 
     async def get(self, table: str, key: Union[str,int]) -> Dict:
         key = str(key)
@@ -158,7 +195,7 @@ class JSONStore(DataStore):
         if key not in self._store[table]: return {"error": f"They key `{key}` does not exist in this document."}
         return {key: self._store[table][key]} # This might return {key: None} which can be valid in Python
 
-    async def set(self, table: str, data: Union[Dict,Any], key: Union[str,int]) -> bool:
+    async def set(self, table: str, data: Any, key: Union[str,int]) -> bool:
         """ A function to add a single new key-value pair to the datastore.
 
         When adding one key, this function expects data to be any data type
@@ -241,14 +278,21 @@ class JSONStore(DataStore):
             print(ex)
             return False
 
-    def _save(self) -> bool:
-        try:
-            with open(self.file, mode="w") as s:
-                json.dump(self._store, **self.jsonopts)
-            return True
-        except Exception as ex:
-            print(ex)
-            return False
+    async def delete(self, table: str, key: Union[str,int]) -> Dict:
+        val = self._store.pop(key, None)
+        self._save()
+        return val if val else {"error": "Either the key didn't exist, or it had a none value"}
+
+    def delete_sync(self, table: str, key: Union[str,int]) -> Dict:
+        val = self._store.pop(key, None)
+        self._save()
+        return val if val else {"error": "Either the key didn't exist, or it had a none value"}
+
+    async def close(self) -> bool:
+        return self._save() # Might as well save it an extra time
+
+    def close_sync(self) -> bool:
+        return self._save()
 
 class SQLiteStore(DataStore):
     """ A `DataStore` implementation for use with Danny's `asqlite` library.
@@ -264,11 +308,8 @@ class SQLiteStore(DataStore):
 
     def __init__(self, store: Union[str,Path], openopts: Dict={}, **readopts: Dict):
         super().__init__(store=store)
-        try:
-            self._store = asql.connect(self.file, **openopts)
-        except Exception as ex:
-            print(ex)
-            raise ex
+        self._store = None
+        self._openopts = openopts
 
     async def get(self, table: str, key: Union[str,int], column: str="id") -> Dict:
         """ Simple get function to query the DB for data from specific tables.
@@ -295,6 +336,7 @@ class SQLiteStore(DataStore):
         Returns the results of the first row matching the query.
         A query with no results is considered an error.
         """
+        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
         key = "'"+key+"'" if type(key) is str else key
         query = f"SELECT * FROM \"{table}\" WHERE \"{column}\"=={key};"
         res = await self._store.execute(query)
@@ -322,6 +364,7 @@ class SQLiteStore(DataStore):
         return a list containing that one entry.
         Might take a bit longer than `get` depending on the amount of results.
         """
+        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
         if type(key) is str:
             key = "'"+key+"'"
         elif type(key) is list:
@@ -357,6 +400,7 @@ class SQLiteStore(DataStore):
         `data` instead. Usually, keys are fetched from other tables, or they
         are automatically generated.
         """
+        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
         columns = ",".join(data.keys())
         values = ",".join(data.values())
         query = f"INSERT OR FAIL INTO {table} ({columns}) VALUES ({values});"
@@ -375,6 +419,7 @@ class SQLiteStore(DataStore):
         Updates a row in a table using the key as an exact matching pattern for
         the specified column. By default, this is the id column for the table.
         """
+        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
         columns = ",".join(data.keys())
         values = ",".join(data.values())
         key = "'"+key+"'" if type(key) is str else key
@@ -387,6 +432,37 @@ class SQLiteStore(DataStore):
             print(ex)
             return False
 
+    async def delete(self, table: str, key: Union[str, int], column: str="id") -> Dict:
+        """ Get and delete the requested row and return the value one last time.
+
+        Internally calls `self.get(table=table, key=key, column=column)` before
+        executing the DELETE statement, then commits the transaction and
+        returns whatever the return value was for the `get` call
+        """
+        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
+        val = self.get(table=table, key=key, column=column)
+        if not "error" in val.keys():
+            # If it didn't error, it exists and we delete it.
+            query = f"DELETE FROM {table} WHERE {column} == {key}"
+            self._store.execute(query)
+            self._store.commit()
+            val["_SQLStoreInputQuery"] = query
+        return val
+
+    async def close(self) -> bool:
+        """ Commit and close the database connection.
+        """
+        if self._store is None:
+            return True
+        try:
+            self._store.commit() # Make sure we save
+            self._store.close()
+        except Exception as ex:
+            print(ex)
+            return False
+        return True
+
+
     async def query_complex(self, query: str, commit: bool=False) -> Union[Row,Dict]:
         """ A simple wrapper that executes a given query, sanitize user input!
 
@@ -398,8 +474,10 @@ class SQLiteStore(DataStore):
         should call `commit` on the connection object. This defaults to False
         as the function should
         """
+        self._store = await asql.connect(self.file, **self._openopts) if self._store is None else self._store
         try:
-            return await self._store.execute(query)
+            await self._store.execute(query)
+            return self._store.commit() if commit else True
         except Exception as ex:
             print(ex)
             return {"error": ex, "_SQLStoreInputQuery": query}
