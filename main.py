@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """ This is the startup wrapper for Zwei. Run it as usual with Python stuff.
 
 This wrapper mainly exists for those who wish to modify the bot for their own
@@ -11,7 +12,9 @@ Authors:    RivenSkaye
             bthen13
 """
 
-from Zwei import ZweiBot as ZB
+__version__ = '0.1'
+
+import Zwei
 import utils._datastores as _ds
 from discord.ext import commands
 
@@ -41,10 +44,17 @@ def get_prefix(bot, msg):
             prefix = guilds[key]
     return commands.when_mentioned_or(prefix)(bot,msg)
 
-zwei = ZB(cmd_prefix=get_prefix, config=bot_conf, database=bot_db)
+zwei = Zwei.ZweiBot(cmd_prefix=get_prefix, config=bot_conf, database=bot_db)
 try:
+    # Run the bot. This blocks every line of code below it until it closes
     zwei.run(zwei._token)
+# There's nothing that should go wrong here. I think.
 except Exception as wtf:
     print("Zwei encountered a MAJOR malfunction, contact the devs for help!")
     print("====================")
     print(wtf)
+    exit(1)
+
+# If we reached all the way here, exit normally without error status
+print("Thanks for using Zwei and don't forget to update!")
+exit(0)
