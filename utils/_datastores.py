@@ -463,8 +463,8 @@ class SQLiteStore(DataStore):
         if self._store is None:
             return True
         try:
-            self._store.commit() # Make sure we save
-            self._store.close()
+            await self._store.commit() # Make sure we save
+            await self._store.close()
         except Exception as ex:
             print(ex)
             return False
