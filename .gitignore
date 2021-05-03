@@ -1,6 +1,8 @@
 # IDE files #
 *.komodoproject
 .komodotools/
+Dependencies/
+Dependencies.zip
 
 # MySQL Workbench #
 *.mwb
