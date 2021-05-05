@@ -72,6 +72,7 @@ class BaseCommands(commands.Cog, name="Base"):
         await ctx.reply(f"I need some rest, so I'll give you {timetxt} before I go and take a nap")
         await sleep(time if time > 0 else 1)
         await self.bot.close()
+        return
 
     @commands.command(name="say")
     async def say(self, ctx, *, text: str, embed: Optional[str]=None):
@@ -124,6 +125,22 @@ class BaseCommands(commands.Cog, name="Base"):
             await ctx.reply(f"Successfully unloaded _{cog}_.")
         except Exception as ex:
             await ctx.reply("Get rekt, this is so broken I can't yeet it. Something went wrong trying to unload _{cog}_.\n{ex}")
+
+    @commands.command(name="owners", aliases=["owner", "proprietor", "proprietors", "license"])
+    async def get_owners(self, ctx):
+        if self.bot.owner_ids:
+            ownerstr = ""
+            owners = []
+            for oid in self.bot.owner_ids:
+                owners.append("**" + self.bot.get_name(oid, ctx.guild) + "**")
+            while len(owners) > 1:
+                ownerstr = ownerstr + str(owners.pop(0)) + ", "
+            ownerstr = ownerstr + "and " + str(owners.pop())
+        elif self.bot.owner_id:
+            ownerstr = f"**{self.bot.get_name(self.bot.owner_id, guild)}**"
+        else:
+            ownerstr = "nobody"
+        await ctx.send(f"I belong to {ownerstr}!")
 
 def setup(bot):
     bot.add_cog(BaseCommands(bot))
