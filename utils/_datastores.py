@@ -169,7 +169,7 @@ class JSONStore(DataStore):
         self.jsonopts = jsonopts
         try:
             with open(store, **openopts) as ds:
-                self._store = json.load(ds, **jsonopts)
+                self._store = json.load(ds)
         except Exception as ex:
             print(ex)
             raise ex
