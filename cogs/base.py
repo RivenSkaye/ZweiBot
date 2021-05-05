@@ -61,7 +61,7 @@ class BaseCommands(commands.Cog, name="Base"):
             else:
                 await ctx.send("I couldn't change the prefix, something went wrong!\nContact the devs for assistance")
 
-    @commands.command(name="shutdown", aliases=["exit", "panic", "die"])
+    @commands.command(name="shutdown", aliases=["exit", "panic", "die", "sleep"])
     @commands.is_owner()
     async def shutdown(self, ctx, time: int=1):
         """ Shuts down after optionally <time> seconds. Owner only.
@@ -83,6 +83,47 @@ class BaseCommands(commands.Cog, name="Base"):
         not going to send a notification to anyone anyways.
         """
         await ctx.send(text)
+
+    @commands.command(name="load")
+    @commands.is_owner()
+    async def load_cog(self, ctx, cog: str):
+        """ Loads a cog by name, if it exists.
+
+        Performs a lookup in the cogs folder to see if the requested cog name exists.
+        Then proceeds to load the cog if it does, or it sends an error that it doesn't.
+        """
+        try:
+            self.bot.load_extension(f"cogs.{cog}")
+            await ctx.reply(f"Successfully loaded _{cog}_.")
+        except Exception as ex:
+            await ctx.reply("Something went wrong trying to load _{cog}_.\n{ex}")
+
+    @commands.command(name="reload")
+    @commands.is_owner()
+    async def reload_cog(self, ctx, cog: str):
+        """Reloads a loaded cog. Useful for code changes.
+
+        This can be used when working on development, or when a cog misbehaves and
+        needs to be reinitialized. Expect to use this for debugging as well.
+        """
+        try:
+            self.bot.reload_extension(f"cogs.{cog}")
+            await ctx.reply(f"Successfully reloaded _{cog}_.")
+        except Exception as ex:
+            await ctx.reply("Something went wrong trying to reload _{cog}_.\n{ex}")
+
+    @commands.command(name="unload")
+    @commands.is_owner()
+    async def unload_cog(self, ctx, cog: str):
+        """Unloads a loaded cog. Useful for code changes.
+
+        Yeets the cog from the bot until you load it again.
+        """
+        try:
+            self.bot.unload_extension(f"cogs.{cog}")
+            await ctx.reply(f"Successfully unloaded _{cog}_.")
+        except Exception as ex:
+            await ctx.reply("Get rekt, this is so broken I can't yeet it. Something went wrong trying to unload _{cog}_.\n{ex}")
 
 def setup(bot):
     bot.add_cog(BaseCommands(bot))

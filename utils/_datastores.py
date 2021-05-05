@@ -149,7 +149,7 @@ class JSONStore(DataStore):
     Provides all methods synchronously as well, for convenience.
     """
 
-    def __init__(self, store: Union[str,Path], openopts: Dict={"mode": "r"}, jsonopts: Dict={}, **readopts: Dict):
+    def __init__(self, store: Union[str,Path], openopts: Dict={"mode": "r"}, jsonopts: Dict={"indent": 4}, **readopts: Dict):
         """ Open a file and read it as JSON, with possible read and json options.
 
         This method adds `jsonopts` to the init signature, to add in options

@@ -11,7 +11,7 @@ Authors:    Riven Skaye
 """
 # Type hints and function signatures
 from collections.abc import Callable
-from utils._datastores import DataStore
+from .utils._datastores import DataStore
 # Uptime
 from datetime import datetime
 # Discord stuff
@@ -23,6 +23,7 @@ class ZweiBot(commands.AutoShardedBot):
         self._config = config
         try:
             self._token = self._config.get_sync("config", "token")["token"]
+            self._owners = frozenset(self._config.get_sync("config", "owners")["owners"])
             assert len(self._token) > 0, "No token was provided, please add it to the config."
         except AssertionError as ae:
             print(ae)
