@@ -79,8 +79,13 @@ class ZweiBot(commands.AutoShardedBot):
         returns their username if they're not in this server or don't have
         a nickname set currently.
         """
+        mdr = {"~": r"\~", "_": r"\_", "*": r"\*", "|": r"\|", "`": r"\`", ">": r"\>"}
         if guild:
             fetch = guild.get_member(uid)
             if fetch:
-                return fetch.display_name
-        return self.get_user(uid).display_name
+                name = fetch.display_name
+        else:
+            name = self.get_user(uid).display_name
+        for rep in mdr:
+            name = name.replace(rep, mdr[rep])
+        return name
