@@ -14,8 +14,8 @@ Authors:    RivenSkaye
 
 __version__ = '0.1'
 
-from . import Zwei
-from .utils import _datastores as _ds
+import Zwei
+from utils import _datastores as _ds
 from discord.ext import commands
 
 try:
