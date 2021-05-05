@@ -24,6 +24,17 @@ class ZweiBot(commands.AutoShardedBot):
         try:
             self._token = self._config.get_sync("config", "token")["token"]
             self._owners = frozenset(self._config.get_sync("config", "owners")["owners"])
+            print(self._owners)
+            self.get_owners = False
+            supkw = {}
+            if len(self._owners) > 1:
+                owner_ids = self._owners
+                supkw["owner_ids"] = self._owners
+            elif len(self._owners) == 1:
+                owner_id = self._owners
+                supkw["owner_id"] = self._owners
+            else:
+                self.get_owners = True
             assert len(self._token) > 0, "No token was provided, please add it to the config."
         except AssertionError as ae:
             print(ae)
@@ -32,13 +43,15 @@ class ZweiBot(commands.AutoShardedBot):
         intents = discord.Intents.all() # Change this if you don't need some
         super().__init__(command_prefix=cmd_prefix,
                          case_insensitive=True, strip_after_prefix=True,
-                         heartbeat_timeout=180.0, intents=intents)
+                         heartbeat_timeout=180.0, intents=intents, **supkw)
         self.bot_id = None # will be set in on_ready
         cogs = self._config.get_sync("init", "cogs")["cogs"]
         for cog in cogs.keys():
             self.load_extension(f"cogs.{cog}")
 
     async def on_ready(self):
+        if self.get_owners:
+            await self.application_info()
         try:
             await self._db._conn()
         except Exception as ex:
@@ -58,3 +71,16 @@ class ZweiBot(commands.AutoShardedBot):
             print("Couldn't close all database connections, PANIC!")
             exit(1)
         await super().close()
+
+    def get_name(self, uid: int, guild: discord.Guild=None):
+        """ Utility function that returns whatever name fits the context.
+
+        Returns the user's current nickname if one is set in this guild, or
+        returns their username if they're not in this server or don't have
+        a nickname set currently.
+        """
+        if guild:
+            fetch = guild.get_member(uid)
+            if fetch:
+                return fetch.display_name
+        return self.get_user(uid).display_name
