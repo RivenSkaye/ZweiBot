@@ -11,7 +11,7 @@ Authors:    Riven Skaye
 """
 # Type hints and function signatures
 from collections.abc import Callable
-from .utils._datastores import DataStore
+from utils._datastores import DataStore
 # Uptime
 from datetime import datetime
 # Discord stuff
