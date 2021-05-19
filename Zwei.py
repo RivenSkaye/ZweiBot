@@ -48,6 +48,8 @@ class ZweiBot(commands.AutoShardedBot):
         cogs = self._config.get_sync("init", "cogs")["cogs"]
         for cog in cogs.keys():
             self.load_extension(f"cogs.{cog}")
+        self.emotes = {}
+        self.emotes.update(self._config.get_sync("init", "emotes")["emotes"])
 
     async def on_ready(self):
         if self.get_owners:
