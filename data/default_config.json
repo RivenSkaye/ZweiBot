@@ -9,7 +9,8 @@
 		"cogs": {
 			"base": "Base",
 			"modtools": "Moderation"
-		}
+		},
+		"emotes": {}
 	},
 	"prefixes": {}
 }

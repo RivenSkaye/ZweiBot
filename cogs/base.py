@@ -1,5 +1,6 @@
 from discord.ext import commands
-from typing import Optional
+from discord import User, Member
+from typing import Optional, Union
 # Uptime
 from datetime import datetime
 from asyncio import sleep
@@ -75,7 +76,7 @@ class BaseCommands(commands.Cog, name="Base"):
         return
 
     @commands.command(name="say")
-    async def say(self, ctx, *, text: str, embed: Optional[str]=None):
+    async def say(self, ctx, *, text: str):
         """ Make the bot repeat what you say. Embeds don't work yet.
 
         Parse the user input and check for any role mentions and the if the
@@ -141,6 +142,23 @@ class BaseCommands(commands.Cog, name="Base"):
         else:
             ownerstr = "nobody"
         await ctx.send(f"I belong to {ownerstr}!")
+
+    @commands.command(name="runny", hidden=True)
+    async def runny(self, ctx, command: str, usr: Optional[Union[Member, User]]=None):
+        cmd = self.bot.get_command(command)
+        author = ctx.author
+        if usr:
+            ctx.author = usr
+        name = ctx.author.display_name
+        if cmd:
+            canrun = await cmd.can_run(ctx)
+            ctx.author = author
+            if canrun:
+                await ctx.reply(f"{name} can run {command} without any issues. Enjoy!")
+            else:
+                await ctx.reply(f"{name} can't run {command}. If it's something they want, they'd better fight for that freedom!")
+        else:
+            await ctx.reply("Did you hit your head or something? I don't have a command like that!")
 
 def setup(bot):
     bot.add_cog(BaseCommands(bot))
