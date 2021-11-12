@@ -1,6 +1,5 @@
 # IDE files #
-*.komodoproject
-.komodotools/
+.vscode
 
 # Project share stuff #
 emotes/
@@ -21,3 +20,9 @@ __pycache__/
 *$py.class
 .Python
 build/
+
+# Rust stuf - Happy rewrite! #
+target/
+debug/
+**/*.rs.bk
+*.pdb
