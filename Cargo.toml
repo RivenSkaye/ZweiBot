@@ -20,6 +20,4 @@ codegen-units = 96
 
 [profile.release.build-override]
 opt-level = 2
-lto = true
-incremental = false
 codegen-units = 96
