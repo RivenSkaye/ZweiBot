@@ -4,7 +4,6 @@
 -- Project:       Zwei
 -- Changed:       2021-04-20 20:26
 -- Created:       2021-04-20 19:35
-PRAGMA foreign_keys = OFF;
 
 -- Schema: zweiDB
 ATTACH "zweiDB.sdb" AS "zweiDB";
