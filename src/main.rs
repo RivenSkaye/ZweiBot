@@ -3,8 +3,8 @@ use std::fs::File;
 use serde_json as sj;
 use serde::{Serialize, Deserialize};
 
-//#[macro_use]
-//extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Conf {
@@ -20,8 +20,10 @@ fn read_conf() -> Result<Conf, io::Error> {
     Ok(conf)
 }
 
+lazy_static! {
+    static ref CONF: Conf = read_conf().unwrap();
+}
+
 fn main() {
-    let conf = read_conf();
-    print!("{:#?}", conf);
     // do code and get rekt
 }
