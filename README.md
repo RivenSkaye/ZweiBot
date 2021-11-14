@@ -8,8 +8,16 @@ if I was gonna do it properly anyway, I might as well rewrite it completely.
 
 So here's Zwei. A new identity, a new face and a fresh start. The only thing
 she inherits from Prysm is the knowledge I gained creating and partially
-porting over the code. And I'm also applying the knowledge I gained by helping
-out other bot devs with some stuff when I lost motivation for my own work.
+porting over the code.
+
+And now, here we stand with yet another rewrite. In a different language this time.
+After Danny ceased development on discord.py, there were a few devs offering
+an alternative that wouldn't need any changes from existing code other than what
+had changed with dpy 2.0.0a. Well, either Danny started writing code that was
+way different from what he used to write, or their promises of not changing the
+API too much were bogus.
+So in the vein of what this bot was meant for, learning a new lang, I'm now
+using it to teach myself Rust. And I gotta say I like it!
 
 ## The Goal
 
@@ -18,28 +26,18 @@ to meet their needs, but there is some basic functionality I want to provide
 for the bot in order to have a solid base to work off of.
 
 The goal for Zwei is to be a fully featured bot to suit all basic server needs.
-She aims to be able to help people set up a server by changing channel topics,
-setting permissions, managing roles and making it easier to create or delete
-them, as well as setting a color for them. Changing nicknames when the display
-name isn't what the rules would like to see or allow, kick and ban members that
-violate server rules, help make announcements through a central place, mention
-roles in certain contexts where a role should not be mentionable for everyone,
-as well as making sure that this system won't be abused by users to make these
-mentions unnecessarily. Delete and purge messages from the history if stuff
-happens that shouldn't remain and providing an easy way of muting / deafening /
-moving members when they misbehave in a voice channel.
+She's there as a support for mods and admins, sending people to Lost Blue if
+they misbehave (banning them), or just temporarily removing them from the server.
+In the near future, she'll also aim to help people set up a server by allowing
+them easy channel and role creation, editing their settings, etc.
+Besides that, she'll also offer changing nicknames when the display name isn't
+what the rules would allow and she'd be happy to help make announcements through
+a central place, mention roles in certain contexts where a role should not be
+mentionable for everyone, as well as making sure that this system won't be abused
+by users to make these mentions unnecessarily. All in all, Zwei's core modules
+exist to make server management and moderation as easy as possible.
 
-All in all, Zwei's core modules exist to make server management and moderation
-as easy as possible, with a few bonuses.
-
-## The Bonus Features
-
-As with a lot of bots, Zwei is a project of passion and thus some extra features
-are added to her arsenal of commands.
-
-Zwei will have a set of extra features, like action and reaction GIFs, reminders,
-repeating messages and following RSS feeds. Naturally a list will be made and
-updated here as these features get implemented.
+_Other public features are yet to be determined and up to the whims of the devs._
 
 # Owner-only Features
 
@@ -49,6 +47,8 @@ host their own Zwei\* to use these features in their own servers.
 
 Zwei can build a database of music for streaming, so long as files are provided
 that she can access normally. This means direct access links to files, links to
-files hosted on services like fiery or pomf, or perhaps even local files.
+files hosted on services like fiery or pomf, or even system local files.
 So long as `ffmpeg` can read and transcode it for use with Discord, Zwei will be
 happy to stream it into any voice channel she can access.
+
+_No guarantees will be made regarding the audio quality when transcoding._
