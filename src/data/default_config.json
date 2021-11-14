@@ -1,4 +1,5 @@
 {
 	"token": "",
-	"owners": []
+	"owners": [],
+	"database": "Zwei.sdb"
 }
