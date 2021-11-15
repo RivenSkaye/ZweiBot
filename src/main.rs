@@ -16,6 +16,13 @@ struct Conf {
     database: String
 }
 
+fn get_data_dir() -> PathBuf{
+    std::env::current_exe().unwrap()
+    .parent().unwrap().join("data").canonicalize()
+    .or_else(|_| PathBuf::from("./data").canonicalize())
+    .unwrap()
+}
+
 fn create_default_conf(pth: PathBuf) -> Result<File, io::Error> {
     let mut dconf = Conf::default();
     dconf.database = String::from("Zwei.sdb");
@@ -33,13 +40,6 @@ fn read_conf() -> Result<Conf, io::Error> {
     let reader = io::BufReader::new(conf_file);
     let conf = sj::from_reader(reader)?;
     Ok(conf)
-}
-
-fn get_data_dir() -> PathBuf{
-    std::env::current_exe().unwrap()
-    .parent().unwrap().join("data").canonicalize()
-    .or_else(|_| PathBuf::from("./data").canonicalize())
-    .unwrap()
 }
 
 lazy_static! {
