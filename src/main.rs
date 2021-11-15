@@ -24,25 +24,27 @@ fn create_default_conf(pth: PathBuf) -> Result<File, io::Error> {
     Ok(f)
 }
 
-fn read_conf(pth: &PathBuf) -> Result<Conf, io::Error> {
+fn read_conf() -> Result<Conf, io::Error> {
+    let pth = &DATADIR;
     let conf_file = File::open(pth.join("config.json"))
         .or_else(|_| File::open("./data/config.json"))
         .or_else(|_| create_default_conf(DATADIR.join("config.json")))
-        .expect(&format!("Couldn't open {:#?}, ./data/config.json or {:}. PANIC!", pth, DATADIR.display()));
+        .expect(&format!("Couldn't open or create either {:}/config.json or ./data/config.json. PANIC!", pth.display()));
     let reader = io::BufReader::new(conf_file);
     let conf = sj::from_reader(reader)?;
     Ok(conf)
 }
 
 fn get_data_dir() -> PathBuf{
-    let pth: PathBuf = std::env::current_exe().unwrap()
-    .parent().unwrap().join("data");
-    if pth.exists() {pth} else {PathBuf::from("./data")}
+    std::env::current_exe().unwrap()
+    .parent().unwrap().join("data").canonicalize()
+    .or_else(|_| PathBuf::from("./data").canonicalize())
+    .unwrap()
 }
 
 lazy_static! {
     static ref DATADIR: PathBuf = get_data_dir();
-    static ref CONF: Conf = read_conf(&DATADIR).unwrap();
+    static ref CONF: Conf = read_conf().unwrap();
 }
 
 fn main() {
