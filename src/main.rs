@@ -1,8 +1,6 @@
-use std::io;
+use std::io::{self, Write};
 use std::path::PathBuf;
-use std::fs;
-use fs::File;
-use std::io::Write;
+use std::fs::File;
 use serde_json as sj;
 use serde::{Serialize, Deserialize};
 
