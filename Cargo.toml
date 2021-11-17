@@ -12,6 +12,7 @@ serenity = "0.10.9"
 serde = "^1.0.100"
 serde_json = "1.0.70"
 lazy_static = "1.4.0"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 
 [profile.release]
 opt-level = 2
