@@ -1,9 +1,17 @@
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json as sj;
-use serenity::Client;
+use serenity::{
+    async_trait, builder, cache, client, constants, framework,
+    model::{event::ResumedEvent, gateway::Ready, prelude, user},
+    prelude::*,
+    utils, Client,
+};
+use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 #[macro_use]
 extern crate lazy_static;
@@ -13,6 +21,19 @@ struct Conf {
     token: String,
     owners: Vec<i64>,
     database: String,
+}
+
+struct Handler;
+
+#[async_trait]
+impl EventHandler for Handler {
+    async fn ready(&self, _: Context, ready: Ready) {
+        info!("{} connected to Discord at {}", ready.user.name, Utc::now())
+    }
+
+    async fn resume(&self, _: Context, _: ResumedEvent) {
+        info!("Reconnected at {}", utc::now())
+    }
 }
 
 fn get_data_dir() -> PathBuf {
@@ -67,8 +88,8 @@ fn read_conf() -> Result<Conf, io::Error> {
 }
 
 lazy_static! {
-    static ref DATADIR: PathBuf = get_data_dir();
-    static ref CONF: Conf = read_conf().unwrap();
+    pub(crate) static ref DATADIR: PathBuf = get_data_dir();
+    pub(crate) static ref CONF: Conf = read_conf().unwrap();
 }
 
 #[tokio::main]
