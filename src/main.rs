@@ -1,10 +1,12 @@
 use chrono::Utc;
 use serenity::{
-    async_trait, builder, cache, client, constants, framework,
-    model::{event::ResumedEvent, gateway::Ready, prelude, user},
+    async_trait, framework,
+    http::Http,
+    model::{event::ResumedEvent, gateway::Ready, id::UserId, user},
     prelude::*,
     utils, Client,
 };
+use std::collections::HashSet;
 
 mod zwei_conf;
 
@@ -27,6 +29,23 @@ impl EventHandler for Handler {
 #[tokio::main]
 async fn main() {
     let conf = &zwei_conf::CONF;
+    let http = Http::new_with_token(&conf.token);
+    let owners = match http.get_current_application_info().await {
+        Ok(info) => {
+            let mut owners = HashSet::<UserId>::new();
+            if let Some(team) = info.team {
+                owners.extend(team.members.iter().map(|m| m.user.id));
+            } else {
+                owners.insert(info.owner.id);
+            }
+            owners.extend(conf.owners.iter().map(|o| UserId(*o)));
+            owners
+        }
+        Err(why) => panic!(
+            "Couldn't find owners for the supplied token!\nToken: {}\n{:?}",
+            &conf.token, why
+        ),
+    };
     let mut bot = Client::builder(&conf.token).await.expect("REEEEE");
     bot.start().await.expect("Bot no start");
     // do code and get rekt
