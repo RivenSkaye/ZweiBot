@@ -1,10 +1,11 @@
 use chrono::Utc;
 use serenity::{
-    async_trait, framework,
+    async_trait,
+    client::{bridge::gateway::GatewayIntents, Client},
+    framework,
     http::Http,
-    model::{event::ResumedEvent, gateway::Ready, id::UserId, user},
+    model::{channel::Message, event::ResumedEvent, gateway::Ready, id::UserId},
     prelude::*,
-    utils, Client,
 };
 use std::collections::HashSet;
 
@@ -24,6 +25,17 @@ impl EventHandler for Handler {
     async fn resume(&self, _: Context, _: ResumedEvent) {
         println!("Reconnected at {}", Utc::now())
     }
+
+    async fn message(&self, _: Context, msg: Message) {
+        println!("Received a message!\n{:?}", msg.content);
+    }
+}
+
+#[framework::standard::macros::hook]
+async fn prefix(_ctx: &Context, _msg: &Message) -> Option<String> {
+    // Function for dynamic prefixing, currently unused.
+    // rip out its guts and Frankenstein it when the time comes!
+    Some(String::from(";"))
 }
 
 #[tokio::main]
@@ -46,7 +58,21 @@ async fn main() {
             &conf.token, why
         ),
     };
-    let mut bot = Client::builder(&conf.token).await.expect("REEEEE");
+    let self_id = http.get_current_user().await.unwrap().id;
+    let fw = framework::standard::StandardFramework::new().configure(|c| {
+        c.prefix(";")
+            .on_mention(Some(self_id))
+            .dynamic_prefix(prefix)
+            .with_whitespace(true)
+            .owners(owners)
+            .case_insensitivity(true)
+    });
+    let mut bot = Client::builder(&conf.token)
+        .event_handler(Handler)
+        .framework(fw)
+        .intents(GatewayIntents::all())
+        .await
+        .expect("Zwei is feeling retarded today");
     bot.start().await.expect("Bot no start");
     // do code and get rekt
 }
