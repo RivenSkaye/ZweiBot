@@ -72,7 +72,7 @@ async fn main() {
         .framework(fw)
         .intents(GatewayIntents::all())
         .await
-        .expect("Zwei is feeling retarded today");
+        .expect("Zwei is feeling special today");
     bot.start().await.expect("Bot no start");
     // do code and get rekt
 }
