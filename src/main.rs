@@ -9,6 +9,7 @@ use serenity::{
 };
 use std::collections::HashSet;
 
+mod commands;
 mod zwei_conf;
 
 #[macro_use]
@@ -24,10 +25,6 @@ impl EventHandler for Handler {
 
     async fn resume(&self, _: Context, _: ResumedEvent) {
         println!("Reconnected at {}", Utc::now())
-    }
-
-    async fn message(&self, _: Context, msg: Message) {
-        println!("Received a message!\n{:?}", msg.content);
     }
 }
 
@@ -59,14 +56,16 @@ async fn main() {
         ),
     };
     let self_id = http.get_current_user().await.unwrap().id;
-    let fw = framework::standard::StandardFramework::new().configure(|c| {
-        c.prefix(";")
-            .on_mention(Some(self_id))
-            .dynamic_prefix(prefix)
-            .with_whitespace(true)
-            .owners(owners)
-            .case_insensitivity(true)
-    });
+    let fw = framework::standard::StandardFramework::new()
+        .configure(|c| {
+            c.prefix(";")
+                .on_mention(Some(self_id))
+                .dynamic_prefix(prefix)
+                .with_whitespace(true)
+                .owners(owners)
+                .case_insensitivity(true)
+        })
+        .group(&commands::modtools::MODTOOLS_GROUP);
     let mut bot = Client::builder(&conf.token)
         .event_handler(Handler)
         .framework(fw)
