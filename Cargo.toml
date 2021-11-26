@@ -12,7 +12,7 @@ serenity = { version="0.10.9", features=["framework", "standard_framework"] }
 serde = "^1.0.100"
 serde_json = "1.0.70"
 lazy_static = "1.4.0"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "time"] }
 chrono = "0.4"
 
 
