@@ -57,7 +57,7 @@ async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let pinned = amount - to_delete.len() as u64;
     if pinned == amount {
-        if amount == 1 {
+        if amount > 1 {
             msg.reply(ctx, "All those messages are pinned, I can't delete them.")
                 .await?;
         } else {
