@@ -103,7 +103,6 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
 #[command]
 #[required_permissions("BAN_MEMBERS")]
-#[max_args(2)]
 async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let mem_id = args.parse::<UserId>().unwrap_or_default();
@@ -116,10 +115,18 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let fullname = get_name(msg, ctx).await?;
     let days = args.parse::<u8>().unwrap_or(0);
+    let reason = args.remains().unwrap_or("You know what you did!");
+    if days > 7 {
+        msg.reply(
+            ctx,
+            "Discord doesn't allow deleting more than 7 days when banning.\nDefaulting to that instead.",
+        )
+        .await?;
+    }
     if let Err(_) = msg
         .guild_id
         .unwrap_or_default()
-        .ban(ctx, mem_id, days)
+        .ban_with_reason(ctx, mem_id, if days < 8 { days } else { 7 }, reason)
         .await
     {
         msg.reply(
