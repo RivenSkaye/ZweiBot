@@ -32,7 +32,7 @@ impl EventHandler for Handler {
             let lt = data
                 .get_mut::<ZweiLifeTimes>()
                 .expect("Couldn't get lifetime info...")
-                .entry("Init".to_string())
+                .entry(String::from("Init"))
                 .or_insert(time);
             *lt = time;
         }
@@ -59,6 +59,25 @@ impl TypeMapKey for ShardManagerContainer {
 pub struct ZweiLifeTimes;
 impl TypeMapKey for ZweiLifeTimes {
     type Value = HashMap<String, DateTime<Utc>>;
+}
+
+pub fn sanitize_txt(txt: &str) -> String {
+    // Thanks a lot to Acrimon for making this not shit
+    let mut sanitized = String::with_capacity(txt.len() * 4 / 3);
+    txt.chars().for_each(|c| match c {
+        '\\' => sanitized.push_str("\\\\"),
+        '~' => sanitized.push_str("\\~"),
+        '_' => sanitized.push_str("\\_"),
+        '*' => sanitized.push_str("\\*"),
+        '|' => sanitized.push_str("\\|"),
+        '`' => sanitized.push_str("\\`"),
+        '<' => sanitized.push_str("\\<"),
+        '>' => sanitized.push_str("\\>"),
+        '[' => sanitized.push_str("\\["),
+        ']' => sanitized.push_str("\\]"),
+        _ => sanitized.push(c),
+    });
+    sanitized
 }
 
 #[tokio::main]
