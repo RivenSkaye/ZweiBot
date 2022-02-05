@@ -8,7 +8,7 @@ use serenity::model::{
 use serenity::prelude::*;
 use tokio::time::{sleep, Duration};
 
-use crate::{sanitize_txt, ShardManagerContainer, ZweiLifeTimes};
+use crate::{get_name, ShardManagerContainer, ZweiLifeTimes};
 
 #[command]
 #[owners_only]
@@ -98,17 +98,7 @@ async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let mem_id = args.parse::<UserId>().unwrap_or_default();
-
-    let nick = msg.author_nick(ctx).await;
-    let uname = &msg.author.name;
-    let discrim = &msg.author.discriminator;
-
-    let fullname: String;
-    if nick.is_none() {
-        fullname = sanitize_txt(&format!("{:}#{:0>4}", uname, discrim));
-    } else {
-        fullname = sanitize_txt(&format!("{:} ({:}#{:0>4})", nick.unwrap(), uname, discrim));
-    }
+    let fullname = get_name(msg, ctx).await?;
 
     if mem_id == UserId::default() {
         msg.reply(ctx, "Please specify a user to kick by mention or ID.")
