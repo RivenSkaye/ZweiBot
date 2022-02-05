@@ -1,4 +1,3 @@
-use chrono::Utc;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::{
@@ -6,37 +5,15 @@ use serenity::model::{
     prelude::*,
 };
 use serenity::prelude::*;
-use tokio::time::{sleep, Duration};
 
-use crate::{get_name, ShardManagerContainer, ZweiLifeTimes};
-
-#[command]
-#[owners_only]
-#[max_args(1)]
-async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    args.trimmed();
-    let time: u64 = args.parse::<u64>().unwrap_or(1);
-    let botdata = ctx.data.read().await;
-
-    if let Some(manager) = botdata.get::<ShardManagerContainer>() {
-        msg.reply(ctx, format!("I'm taking a nap in {:} seconds.", time))
-            .await?;
-        sleep(Duration::from_secs(time)).await;
-        manager.lock().await.shutdown_all().await;
-    } else {
-        msg.reply(ctx, "I've lost control of Kuro, I'm stopping RIGHT NOW!")
-            .await?;
-        std::process::exit(0)
-    }
-    Ok(())
-}
+use crate::get_name;
 
 #[command]
 #[required_permissions("MANAGE_MESSAGES")]
 #[only_in("guilds")]
 #[min_args(1)]
 #[max_args(2)]
-#[only_in("guilds")]
+#[aliases("prune")]
 async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let amount: u64 = args.parse::<u64>().unwrap_or(0);
@@ -94,17 +71,17 @@ async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 #[command]
 #[required_permissions("KICK_MEMBERS")]
 #[max_args(1)]
-#[only_in("guilds")]
 async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let mem_id = args.parse::<UserId>().unwrap_or_default();
-    let fullname = get_name(msg, ctx).await?;
 
     if mem_id == UserId::default() {
         msg.reply(ctx, "Please specify a user to kick by mention or ID.")
             .await?;
         return Ok(());
     }
+
+    let fullname = get_name(msg, ctx).await?;
     if let Err(_) = msg.guild_id.unwrap_or_default().kick(ctx, mem_id).await {
         msg.reply(
             ctx,
@@ -125,28 +102,41 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 }
 
 #[command]
-async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
-    let botdata = ctx.data.read().await;
-    if let Some(lifetime) = botdata.get::<ZweiLifeTimes>() {
-        let now = Utc::now();
-        let timetotal = lifetime.get(&String::from("Init")).unwrap();
-        let diff = now - *timetotal;
-        let difftxt = match diff.to_std() {
-            Err(_) => String::from(
-                "Sorry! I've forgotten to keep track of how long I've been climbing the tower.",
+#[required_permissions("BAN_MEMBERS")]
+#[max_args(2)]
+async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    args.trimmed();
+    let mem_id = args.parse::<UserId>().unwrap_or_default();
+
+    if mem_id == UserId::default() {
+        msg.reply(ctx, "Please specify a user to ban by mention or ID.")
+            .await?;
+        return Ok(());
+    }
+
+    let fullname = get_name(msg, ctx).await?;
+    let days = args.parse::<u8>().unwrap_or(0);
+    if let Err(_) = msg
+        .guild_id
+        .unwrap_or_default()
+        .ban(ctx, mem_id, days)
+        .await
+    {
+        msg.reply(
+            ctx,
+            format!(
+                "I can't ban {:}, please check if their roles are higher than mine.",
+                fullname
             ),
-            Ok(_) => format!(
-                "I've been running around for {:} hours, {:} minutes and {:} seconds now.",
-                diff.num_hours(),
-                diff.num_minutes() % 60,
-                diff.num_seconds() % 60
-            ),
-        };
-        msg.reply(ctx, difftxt).await?;
+        )
+        .await?;
     } else {
         msg.reply(
             ctx,
-            "I've been in Lost Blue for so long that I can't even remember when I got here...",
+            format!(
+                "I sent {:} to Lost Blue. You won't see them again.",
+                fullname
+            ),
         )
         .await?;
     }
@@ -154,5 +144,7 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[group("modtools")]
-#[commands(exit, purge, kick, uptime)]
+#[commands(purge, kick, ban)]
+#[summary = "Commands for moderators and admins of a server."]
+#[only_in("guilds")]
 struct ModTools;
