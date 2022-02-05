@@ -9,6 +9,7 @@ use serenity::{
     http::Http,
     model::{channel::Message, event::ResumedEvent, gateway::Ready, id::UserId},
     prelude::*,
+    Result as SerenityResult,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -78,6 +79,23 @@ pub fn sanitize_txt(txt: &str) -> String {
         _ => sanitized.push(c),
     });
     sanitized
+}
+
+pub async fn get_name(msg: &Message, ctx: &Context) -> SerenityResult<String> {
+    let nick = msg.author_nick(ctx).await;
+    let uname = &msg.author.name;
+    let discrim = &msg.author.discriminator;
+
+    if nick.is_none() {
+        Ok(sanitize_txt(&format!("{:}#{:0>4}", uname, discrim)))
+    } else {
+        Ok(sanitize_txt(&format!(
+            "{:} ({:}#{:0>4})",
+            nick.unwrap(),
+            uname,
+            discrim
+        )))
+    }
 }
 
 #[tokio::main]
