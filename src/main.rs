@@ -94,7 +94,8 @@ pub async fn get_name(msg: &Message, ctx: &Context, mem: UserId) -> SerenityResu
         let gmem = g.member(ctx, mem).await?;
         return Ok(gmem.display_name().into_owned());
     } else {
-        return Ok(mem.to_user(ctx).await?.name);
+        let user = mem.to_user(ctx).await?;
+        return Ok(format!("{:}#{:}", user.name, user.discriminator));
     }
 }
 
