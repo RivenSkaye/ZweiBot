@@ -5,15 +5,16 @@ use serenity::model::{
     prelude::*,
 };
 use serenity::prelude::*;
+use serenity::Error;
 
-use crate::{get_guildname, get_name, try_dm};
+use crate::{get_guildname, get_name, try_dm, ZweiData};
 
 #[command]
 #[required_permissions("MANAGE_MESSAGES")]
 #[only_in("guilds")]
 #[min_args(1)]
 #[max_args(2)]
-#[aliases("prune")]
+#[aliases("prune", "massdelete", "massdel")]
 #[description = "Deletes the specified amount of unpinned messages in the chat. Max 100."]
 async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
@@ -74,6 +75,7 @@ async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 #[required_permissions("KICK_MEMBERS")]
 #[max_args(1)]
 #[description = "Kicks a member from the server. Optionally with a reason."]
+#[aliases("remove", "prod", "eject")]
 async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let mem_id = args.parse::<UserId>().unwrap_or_default();
@@ -84,6 +86,28 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             .await?;
         return Ok(());
     }
+    let memrole = msg.member(ctx).await?.highest_role_info(ctx).await.unwrap();
+    let botdata = ctx.data.read().await;
+    if let Some(data) = botdata.get::<ZweiData>() {
+        let selfrole = msg
+            .guild(ctx)
+            .await
+            .unwrap()
+            .member(ctx, u64::try_from(*data.get("id").unwrap())?)
+            .await?
+            .highest_role_info(ctx)
+            .await
+            .unwrap();
+
+        if selfrole.1 <= memrole.1 {
+            msg.reply(
+                ctx,
+                "I can't kick someone whose roles are equal to or higher than my own!",
+            )
+            .await?;
+            return Ok(());
+        }
+    };
 
     let fullname = get_name(msg, ctx).await?;
     let reason = args.remains().unwrap_or("You know what you did!");
@@ -96,22 +120,23 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             get_guildname(msg, ctx).await,
             reason
         ),
-    );
+    )
+    .await;
 
-    if let Err(_) = msg
+    if let Err(e) = msg
         .guild_id
         .unwrap_or_default()
         .kick_with_reason(ctx, mem_id, reason)
         .await
     {
-        msg.reply(
-            ctx,
-            format!(
-                "I can't kick {:}, please check if their roles are higher than mine.",
-                fullname
-            ),
-        )
-        .await?;
+        let txt = match e {
+            Error::Model(ModelError::InvalidPermissions(missing_perms)) => {
+                format!("please provide me with the `{:}` permission", missing_perms)
+            }
+            _ => String::from("the provided reason was too long"),
+        };
+        msg.reply(ctx, format!("I can't kick {:}, {:}.", fullname, txt))
+            .await?;
     } else {
         msg.reply(
             ctx,
@@ -124,6 +149,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
 #[command]
 #[required_permissions("BAN_MEMBERS")]
+#[aliases("yeet", "lostblue")]
 async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let mem_id = args.parse::<UserId>().unwrap_or_default();
@@ -134,6 +160,28 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             .await?;
         return Ok(());
     }
+    let memrole = msg.member(ctx).await?.highest_role_info(ctx).await.unwrap();
+    let botdata = ctx.data.read().await;
+    if let Some(data) = botdata.get::<ZweiData>() {
+        let selfrole = msg
+            .guild(ctx)
+            .await
+            .unwrap()
+            .member(ctx, u64::try_from(*data.get("id").unwrap())?)
+            .await?
+            .highest_role_info(ctx)
+            .await
+            .unwrap();
+
+        if selfrole.1 <= memrole.1 {
+            msg.reply(
+                ctx,
+                "I can't ban someone whose roles are equal to or higher than my own!",
+            )
+            .await?;
+            return Ok(());
+        }
+    };
 
     let fullname = get_name(msg, ctx).await?;
     let days = args.parse::<u8>().unwrap_or(0);
@@ -151,32 +199,35 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     )
     .await;
 
-    if days > 7 {
+    let realdays: u8 = if days > 7 {
         msg.reply(
             ctx,
             "Discord doesn't allow deleting more than 7 days when banning.\nDefaulting to that instead.",
         )
         .await?;
-    }
-    if let Err(_) = msg
+        7
+    } else {
+        days
+    };
+    if let Err(e) = msg
         .guild_id
         .unwrap_or_default()
-        .ban_with_reason(ctx, mem_id, if days < 8 { days } else { 7 }, reason)
+        .ban_with_reason(ctx, mem_id, realdays, reason)
         .await
     {
-        msg.reply(
-            ctx,
-            format!(
-                "I can't ban {:}, please check if their roles are higher than mine.",
-                fullname
-            ),
-        )
-        .await?;
+        let txt = match e {
+            Error::Model(ModelError::InvalidPermissions(missing_perms)) => {
+                format!("please provide me with the `{:}` permission", missing_perms)
+            }
+            _ => String::from("the provided reason was too long"),
+        };
+        msg.reply(ctx, format!("I can't ban {:}, {:}.", fullname, txt))
+            .await?;
     } else {
         msg.reply(
             ctx,
             format!(
-                "I sent {:} to Lost Blue. You won't see them again.",
+                "I sent {:} off to Lost Blue. You won't see them again.",
                 fullname
             ),
         )
