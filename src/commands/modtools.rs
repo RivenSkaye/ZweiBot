@@ -18,6 +18,7 @@ use crate::{get_guildname, get_name, try_dm};
 async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let amount: u64 = args.parse::<u64>().unwrap_or(0);
+    args.advance();
 
     if amount < 1 {
         msg.reply(ctx, "Could you stop trying to purge thin air?")
@@ -87,7 +88,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let fullname = get_name(msg, ctx).await?;
     let reason = args.remains().unwrap_or("You know what you did!");
 
-    if let Err(dm_attempt) = try_dm(
+    let _ = try_dm(
         ctx,
         mem_id,
         format!(
@@ -95,13 +96,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             get_guildname(msg, ctx).await,
             reason
         ),
-    )
-    .await
-    {
-        println!("Couldn't send DM!\n{:}", dm_attempt)
-    } else {
-        println!("DM Sent!");
-    }
+    );
 
     if let Err(_) = msg
         .guild_id
@@ -134,7 +129,7 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let mem_id = args.parse::<UserId>().unwrap_or_default();
     args.advance();
 
-    if mem_id == UserId::default() {
+    if mem_id.0 == 0 {
         msg.reply(ctx, "Please specify a user to ban by mention or ID.")
             .await?;
         return Ok(());
@@ -142,6 +137,7 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let fullname = get_name(msg, ctx).await?;
     let days = args.parse::<u8>().unwrap_or(0);
+    args.advance();
     let reason = args.remains().unwrap_or("You know what you did!");
 
     let _ = try_dm(

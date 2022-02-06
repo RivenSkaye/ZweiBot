@@ -21,6 +21,7 @@ use crate::{get_name, ShardManagerContainer, ZweiLifeTimes};
 async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let time: u64 = args.parse::<u64>().unwrap_or(1);
+    args.advance();
     let botdata = ctx.data.read().await;
 
     if let Some(manager) = botdata.get::<ShardManagerContainer>() {
