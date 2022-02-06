@@ -1,14 +1,11 @@
 use chrono::Utc;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{Args, CommandResult};
-use serenity::model::{
-    id::{MessageId, UserId},
-    prelude::*,
-};
+use serenity::model::prelude::*;
 use serenity::prelude::*;
 use tokio::time::{sleep, Duration};
 
-use crate::{get_name, ShardManagerContainer, ZweiLifeTimes};
+use crate::{ShardManagerContainer, ZweiData};
 
 #[command]
 #[owners_only]
@@ -41,21 +38,17 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 #[description = "Prints the bot's total running time since the `on_ready` event fired."]
 async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     let botdata = ctx.data.read().await;
-    if let Some(lifetime) = botdata.get::<ZweiLifeTimes>() {
-        let now = Utc::now();
-        let timetotal = lifetime.get(&String::from("Init")).unwrap();
-        let diff = now - *timetotal;
-        let difftxt = match diff.to_std() {
-            Err(_) => String::from(
-                "Sorry! I've forgotten to keep track of how long I've been climbing the tower.",
-            ),
-            Ok(_) => format!(
-                "I've been running around for {:} hours, {:} minutes and {:} seconds now.",
-                diff.num_hours(),
-                diff.num_minutes() % 60,
-                diff.num_seconds() % 60
-            ),
-        };
+    if let Some(lifetime) = botdata.get::<ZweiData>() {
+        let now = Utc::now().timestamp();
+        let starttime = lifetime.get(&String::from("Init")).unwrap();
+        let diff = now - *starttime;
+        let secs = diff % 60;
+        let mins = (diff % 3600) / 60;
+        let hours = diff / 3600;
+        let difftxt = format!(
+            "I've been running around for {:} hours, {:} minutes and {:} seconds now.",
+            hours, mins, secs
+        );
         msg.reply(ctx, difftxt).await?;
     } else {
         msg.reply(
@@ -67,7 +60,24 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
+#[command]
+#[description = "Get the seconds-exact current UTC time, disregarding leap seconds."]
+#[help_available]
+async fn now(ctx: &Context, msg: &Message) -> CommandResult {
+    let now = Utc::now().timestamp() - Utc::today().and_hms(0, 0, 0).timestamp();
+    let diff = now;
+    let secs = diff % 60;
+    let mins = (diff % 3600) / 60;
+    let hours = diff / 3600;
+    let difftxt = format!(
+        "It's now {:} hours, {:} minutes and {:} seconds.",
+        hours, mins, secs
+    );
+    msg.reply(ctx, difftxt).await?;
+    Ok(())
+}
+
 #[group("management")]
-#[commands(exit, uptime)]
+#[commands(exit, uptime, now)]
 #[summary = "Miscellaneous commands for bot management and stats."]
 struct Management;
