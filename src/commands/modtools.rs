@@ -85,21 +85,37 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         msg.reply(ctx, "Please specify a user to kick by mention or ID.")
             .await?;
         return Ok(());
+    } else if mem_id.0 == msg.guild(ctx).await.unwrap().owner_id.0 {
+        msg.reply(ctx, "I can't kick the owner off their own server.")
+            .await?;
+        return Ok(());
     }
-    let memrole = msg.member(ctx).await?.highest_role_info(ctx).await.unwrap();
+    let memrole = msg
+        .guild(ctx)
+        .await
+        .unwrap()
+        .member(ctx, u64::try_from(mem_id.0)?)
+        .await?
+        .highest_role_info(ctx)
+        .await
+        .unwrap();
     let botdata = ctx.data.read().await;
     if let Some(data) = botdata.get::<ZweiData>() {
+        let self_id = u64::try_from(*data.get("id").unwrap())?;
         let selfrole = msg
             .guild(ctx)
             .await
             .unwrap()
-            .member(ctx, u64::try_from(*data.get("id").unwrap())?)
+            .member(ctx, self_id)
             .await?
             .highest_role_info(ctx)
             .await
             .unwrap();
 
-        if selfrole.1 <= memrole.1 {
+        if self_id == mem_id.0 {
+            msg.reply(ctx, "<:ZweiAngery:844167326243880960>").await?;
+            return Ok(());
+        } else if selfrole.1 <= memrole.1 {
             msg.reply(
                 ctx,
                 "I can't kick someone whose roles are equal to or higher than my own!",
@@ -159,21 +175,37 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         msg.reply(ctx, "Please specify a user to ban by mention or ID.")
             .await?;
         return Ok(());
+    } else if mem_id.0 == msg.guild(ctx).await.unwrap().owner_id.0 {
+        msg.reply(ctx, "I can't ban the owner from their own server.")
+            .await?;
+        return Ok(());
     }
-    let memrole = msg.member(ctx).await?.highest_role_info(ctx).await.unwrap();
+    let memrole = msg
+        .guild(ctx)
+        .await
+        .unwrap()
+        .member(ctx, mem_id.0)
+        .await?
+        .highest_role_info(ctx)
+        .await
+        .unwrap();
     let botdata = ctx.data.read().await;
     if let Some(data) = botdata.get::<ZweiData>() {
+        let self_id = u64::try_from(*data.get("id").unwrap())?;
         let selfrole = msg
             .guild(ctx)
             .await
             .unwrap()
-            .member(ctx, u64::try_from(*data.get("id").unwrap())?)
+            .member(ctx, self_id)
             .await?
             .highest_role_info(ctx)
             .await
             .unwrap();
 
-        if selfrole.1 <= memrole.1 {
+        if self_id == mem_id.0 {
+            msg.reply(ctx, "<:ZweiAngery:844167326243880960>").await?;
+            return Ok(());
+        } else if selfrole.1 <= memrole.1 {
             msg.reply(
                 ctx,
                 "I can't ban someone whose roles are equal to or higher than my own!",
