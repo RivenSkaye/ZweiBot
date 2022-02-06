@@ -118,6 +118,10 @@ pub async fn get_guildname(msg: &Message, ctx: &Context) -> String {
 }
 
 #[help]
+#[lacking_permissions = "hide"]
+#[lacking_ownership = "hide"]
+#[embed_error_colour("#9A48C9")]
+#[embed_success_colour("#B82748")]
 async fn zwei_help(
     ctx: &Context,
     msg: &Message,
