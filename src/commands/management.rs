@@ -5,7 +5,7 @@ use serenity::model::prelude::*;
 use serenity::prelude::*;
 use tokio::time::{sleep, Duration};
 
-use crate::{ShardManagerContainer, ZweiData};
+use crate::{get_name, ShardManagerContainer, ZweiData, ZweiOwners};
 
 #[command]
 #[owners_only]
@@ -77,7 +77,29 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
+#[command]
+#[description = "Provides information about the amazing people behind the bot."]
+#[help_available]
+#[aliases("credits", "creators")]
+async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
+    let mut owner_ids = Vec::new();
+    let mut ownernames = String::from(
+        "These are the wonderful people who wrote me or were guinea pigs for testing!",
+    );
+    let botdata = ctx.data.read().await;
+    if let Some(owners) = botdata.get::<ZweiOwners>() {
+        owners.iter().for_each(|o| owner_ids.push(o));
+    }
+    while owner_ids.len() > 0 {
+        let name = get_name(msg, ctx, *owner_ids.pop().unwrap()).await?;
+        ownernames.push_str("\n- ");
+        ownernames.push_str(&*name);
+    }
+    msg.reply(ctx, ownernames).await?;
+    Ok(())
+}
+
 #[group("management")]
-#[commands(exit, uptime, now)]
+#[commands(exit, uptime, now, owners)]
 #[summary = "Miscellaneous commands for bot management and statistics."]
 struct Management;
