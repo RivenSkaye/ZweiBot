@@ -6,7 +6,7 @@ use serenity::model::{
 };
 use serenity::prelude::*;
 
-use crate::get_name;
+use crate::{get_guildname, get_name, try_dm};
 
 #[command]
 #[required_permissions("MANAGE_MESSAGES")]
@@ -14,6 +14,7 @@ use crate::get_name;
 #[min_args(1)]
 #[max_args(2)]
 #[aliases("prune")]
+#[description = "Deletes the specified amount of unpinned messages in the chat. Max 100."]
 async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let amount: u64 = args.parse::<u64>().unwrap_or(0);
@@ -71,9 +72,11 @@ async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 #[command]
 #[required_permissions("KICK_MEMBERS")]
 #[max_args(1)]
+#[description = "Kicks a member from the server. Optionally with a reason."]
 async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let mem_id = args.parse::<UserId>().unwrap_or_default();
+    args.advance();
 
     if mem_id == UserId::default() {
         msg.reply(ctx, "Please specify a user to kick by mention or ID.")
@@ -82,7 +85,30 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     }
 
     let fullname = get_name(msg, ctx).await?;
-    if let Err(_) = msg.guild_id.unwrap_or_default().kick(ctx, mem_id).await {
+    let reason = args.remains().unwrap_or("You know what you did!");
+
+    if let Err(dm_attempt) = try_dm(
+        ctx,
+        mem_id,
+        format!(
+            "You were kicked from {:}.\nReason: {:}",
+            get_guildname(msg, ctx).await,
+            reason
+        ),
+    )
+    .await
+    {
+        println!("Couldn't send DM!\n{:}", dm_attempt)
+    } else {
+        println!("DM Sent!");
+    }
+
+    if let Err(_) = msg
+        .guild_id
+        .unwrap_or_default()
+        .kick_with_reason(ctx, mem_id, reason)
+        .await
+    {
         msg.reply(
             ctx,
             format!(
@@ -106,6 +132,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let mem_id = args.parse::<UserId>().unwrap_or_default();
+    args.advance();
 
     if mem_id == UserId::default() {
         msg.reply(ctx, "Please specify a user to ban by mention or ID.")
@@ -116,6 +143,18 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let fullname = get_name(msg, ctx).await?;
     let days = args.parse::<u8>().unwrap_or(0);
     let reason = args.remains().unwrap_or("You know what you did!");
+
+    let _ = try_dm(
+        ctx,
+        mem_id,
+        format!(
+            "You were banned from {:}.\nReason: {:}",
+            get_guildname(msg, ctx).await,
+            reason
+        ),
+    )
+    .await;
+
     if days > 7 {
         msg.reply(
             ctx,
