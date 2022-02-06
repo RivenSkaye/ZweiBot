@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serenity::{
     async_trait,
     client::{
@@ -27,17 +27,18 @@ struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
-        let time = Utc::now();
+        let stime = Utc::now();
+        let time = stime.timestamp();
         {
             let mut data = ctx.data.write().await;
             let lt = data
-                .get_mut::<ZweiLifeTimes>()
+                .get_mut::<ZweiData>()
                 .expect("Couldn't get lifetime info...")
                 .entry(String::from("Init"))
                 .or_insert(time);
             *lt = time;
         }
-        println!("{} connected to Discord at {}", ready.user.name, time)
+        println!("{} connected to Discord at {}", ready.user.name, stime)
     }
 
     async fn resume(&self, _: Context, _: ResumedEvent) {
@@ -57,9 +58,9 @@ impl TypeMapKey for ShardManagerContainer {
     type Value = Arc<Mutex<ShardManager>>;
 }
 
-pub struct ZweiLifeTimes;
-impl TypeMapKey for ZweiLifeTimes {
-    type Value = HashMap<String, DateTime<Utc>>;
+pub struct ZweiData;
+impl TypeMapKey for ZweiData {
+    type Value = HashMap<String, i64>;
 }
 
 pub fn sanitize_txt(txt: &str) -> String {
@@ -146,7 +147,8 @@ async fn main() {
                 .owners(owners)
                 .case_insensitivity(true)
         })
-        .group(&commands::modtools::MODTOOLS_GROUP);
+        .group(&commands::modtools::MODTOOLS_GROUP)
+        .group(&commands::management::MANAGEMENT_GROUP);
     let mut bot = Client::builder(&conf.token)
         .event_handler(Handler)
         .framework(fw)
@@ -156,9 +158,10 @@ async fn main() {
     {
         let mut data = bot.data.write().await;
         data.insert::<ShardManagerContainer>(bot.shard_manager.clone());
-        let mut blank_date = HashMap::new();
-        blank_date.insert("Init".to_string(), Utc::now());
-        data.insert::<ZweiLifeTimes>(blank_date);
+        let mut zd = HashMap::new();
+        zd.insert("Init".to_string(), Utc::now().timestamp());
+        zd.insert("id".to_string(), i64::from(self_id));
+        data.insert::<ZweiData>(zd);
     }
     let shard_manager = bot.shard_manager.clone();
     tokio::spawn(async move {
