@@ -98,6 +98,24 @@ pub async fn get_name(msg: &Message, ctx: &Context) -> SerenityResult<String> {
     }
 }
 
+pub async fn try_dm(
+    ctx: &Context,
+    user: UserId,
+    msg: impl std::fmt::Display,
+) -> SerenityResult<()> {
+    let chan = user.create_dm_channel(ctx).await?;
+    chan.say(ctx, msg).await?;
+    Ok(())
+}
+
+pub async fn get_guildname(msg: &Message, ctx: &Context) -> String {
+    msg.guild_id
+        .unwrap()
+        .name(ctx)
+        .await
+        .unwrap_or(String::from(""))
+}
+
 #[tokio::main]
 async fn main() {
     let conf = &zwei_conf::CONF;
