@@ -79,7 +79,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let mem_id = args.parse::<UserId>().unwrap_or_default();
     args.advance();
 
-    if mem_id == UserId::default() {
+    if mem_id.0 == 0 {
         msg.reply(ctx, "Please specify a user to kick by mention or ID.")
             .await?;
         return Ok(());
