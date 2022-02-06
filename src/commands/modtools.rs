@@ -125,7 +125,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         }
     };
 
-    let fullname = get_name(msg, ctx).await?;
+    let fullname = get_name(msg, ctx, mem_id).await?;
     let reason = args.remains().unwrap_or("You know what you did!");
 
     let _ = try_dm(
@@ -215,7 +215,7 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         }
     };
 
-    let fullname = get_name(msg, ctx).await?;
+    let fullname = get_name(msg, ctx, mem_id).await?;
     let days = args.parse::<u8>().unwrap_or(0);
     args.advance();
     let reason = args.remains().unwrap_or("You know what you did!");
