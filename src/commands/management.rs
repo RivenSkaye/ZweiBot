@@ -14,9 +14,9 @@ use crate::{get_name, ShardManagerContainer, ZweiLifeTimes};
 #[owners_only]
 #[max_args(1)]
 #[aliases("shutdown", "panic", "die", "sleep")]
-#[description = "Shuts down the bot, owner only. Optionally takes a time in seconds to wait."]
+#[description = "Shuts down the bot, owner only. Optionally takes a time in seconds to wait, defaults to 1 second."]
 #[example = "shutdown 5"]
-#[example = "shutdown"]
+#[example = "sleep"]
 #[help_available]
 async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
@@ -38,7 +38,6 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
 #[command]
 #[description = "Prints the bot's total running time since the `on_ready` event fired."]
-#[example = "uptime"]
 async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     let botdata = ctx.data.read().await;
     if let Some(lifetime) = botdata.get::<ZweiLifeTimes>() {
