@@ -79,5 +79,5 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[group("management")]
 #[commands(exit, uptime, now)]
-#[summary = "Miscellaneous commands for bot management and stats."]
+#[summary = "Miscellaneous commands for bot management and statistics."]
 struct Management;
