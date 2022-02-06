@@ -22,6 +22,21 @@ mod zwei_conf;
 #[macro_use]
 extern crate lazy_static;
 
+pub struct ShardManagerContainer;
+impl TypeMapKey for ShardManagerContainer {
+    type Value = Arc<Mutex<ShardManager>>;
+}
+
+pub struct ZweiData;
+impl TypeMapKey for ZweiData {
+    type Value = HashMap<String, i64>;
+}
+
+pub struct ZweiOwners;
+impl TypeMapKey for ZweiOwners {
+    type Value = HashSet<UserId>;
+}
+
 struct Handler;
 
 #[async_trait]
@@ -51,16 +66,6 @@ async fn prefix(_ctx: &Context, _msg: &Message) -> Option<String> {
     // Function for dynamic prefixing, currently unused.
     // rip out its guts and Frankenstein it when the time comes!
     Some(String::from(";"))
-}
-
-pub struct ShardManagerContainer;
-impl TypeMapKey for ShardManagerContainer {
-    type Value = Arc<Mutex<ShardManager>>;
-}
-
-pub struct ZweiData;
-impl TypeMapKey for ZweiData {
-    type Value = HashMap<String, i64>;
 }
 
 pub fn sanitize_txt(txt: &str) -> String {
@@ -144,7 +149,7 @@ async fn main() {
                 .on_mention(Some(self_id))
                 .dynamic_prefix(prefix)
                 .with_whitespace(true)
-                .owners(owners)
+                .owners(owners.clone())
                 .case_insensitivity(true)
         })
         .group(&commands::modtools::MODTOOLS_GROUP)
@@ -162,6 +167,7 @@ async fn main() {
         zd.insert("Init".to_string(), Utc::now().timestamp());
         zd.insert("id".to_string(), i64::from(self_id));
         data.insert::<ZweiData>(zd);
+        data.insert::<ZweiOwners>(owners.clone());
     }
     let shard_manager = bot.shard_manager.clone();
     tokio::spawn(async move {
