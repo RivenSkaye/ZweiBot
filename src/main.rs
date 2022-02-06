@@ -6,6 +6,7 @@ use serenity::{
         Client,
     },
     framework,
+    framework::standard::{macros::help, Args, CommandGroup, CommandResult, HelpOptions},
     http::Http,
     model::{channel::Message, event::ResumedEvent, gateway::Ready, id::UserId},
     prelude::*,
@@ -87,20 +88,13 @@ pub fn sanitize_txt(txt: &str) -> String {
     sanitized
 }
 
-pub async fn get_name(msg: &Message, ctx: &Context) -> SerenityResult<String> {
-    let nick = msg.author_nick(ctx).await;
-    let uname = &msg.author.name;
-    let discrim = &msg.author.discriminator;
-
-    if nick.is_none() {
-        Ok(sanitize_txt(&format!("{:}#{:0>4}", uname, discrim)))
+pub async fn get_name(msg: &Message, ctx: &Context, mem: UserId) -> SerenityResult<String> {
+    let guild = msg.guild(ctx).await;
+    if let Some(g) = guild {
+        let gmem = g.member(ctx, mem).await?;
+        return Ok(gmem.display_name().into_owned());
     } else {
-        Ok(sanitize_txt(&format!(
-            "{:} ({:}#{:0>4})",
-            nick.unwrap(),
-            uname,
-            discrim
-        )))
+        return Ok(mem.to_user(ctx).await?.name);
     }
 }
 
@@ -120,6 +114,19 @@ pub async fn get_guildname(msg: &Message, ctx: &Context) -> String {
         .name(ctx)
         .await
         .unwrap_or(String::from(""))
+}
+
+#[help]
+async fn zwei_help(
+    ctx: &Context,
+    msg: &Message,
+    args: Args,
+    opts: &'static HelpOptions,
+    groups: &[&'static CommandGroup],
+    owners: HashSet<UserId>,
+) -> CommandResult {
+    framework::standard::help_commands::with_embeds(ctx, msg, args, opts, groups, owners).await;
+    Ok(())
 }
 
 #[tokio::main]
@@ -152,6 +159,7 @@ async fn main() {
                 .owners(owners.clone())
                 .case_insensitivity(true)
         })
+        .help(&ZWEI_HELP)
         .group(&commands::modtools::MODTOOLS_GROUP)
         .group(&commands::management::MANAGEMENT_GROUP);
     let mut bot = Client::builder(&conf.token)
