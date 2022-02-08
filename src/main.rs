@@ -122,6 +122,8 @@ pub async fn get_guildname(msg: &Message, ctx: &Context) -> String {
 #[lacking_ownership = "hide"]
 #[embed_error_colour("#9A48C9")]
 #[embed_success_colour("#B82748")]
+#[strikethrough_commands_tip_in_guild = ""]
+#[strikethrough_commands_tip_in_dm = ""]
 async fn zwei_help(
     ctx: &Context,
     msg: &Message,
@@ -166,7 +168,7 @@ async fn main() {
         })
         .help(&ZWEI_HELP)
         .group(&commands::modtools::MODTOOLS_GROUP)
-        .group(&commands::management::MANAGEMENT_GROUP);
+        .group(&commands::misc::MISC_GROUP);
     let mut bot = Client::builder(&conf.token)
         .event_handler(Handler)
         .framework(fw)
