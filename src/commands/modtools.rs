@@ -268,7 +268,7 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     Ok(())
 }
 
-#[group("modtools")]
+#[group("Modtools")]
 #[commands(purge, kick, ban)]
 #[summary = "Commands for moderators and admins of a server."]
 #[only_in("guilds")]
