@@ -99,7 +99,7 @@ async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
-#[group("management")]
+#[group("Misc")]
 #[commands(exit, uptime, now, owners)]
 #[summary = "Miscellaneous commands for bot management and statistics."]
-struct Management;
+struct Misc;
