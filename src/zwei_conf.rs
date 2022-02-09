@@ -11,6 +11,8 @@ pub struct Conf {
     pub(crate) owners: HashSet<u64>,
     #[serde(default = "default_db")]
     pub(crate) database: String,
+    #[serde(default)]
+    pub(crate) db_pass: String,
     #[serde(default = "default_err_color")]
     pub(crate) err_color: String,
     #[serde(default = "default_ok_color")]
