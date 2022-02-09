@@ -20,11 +20,11 @@ pub struct Conf {
 }
 
 fn default_err_color() -> String {
-    "#9A48C9".to_string()
+    "9A48C9".to_string()
 }
 
 fn default_ok_color() -> String {
-    "#B82748".to_string()
+    "B82748".to_string()
 }
 
 fn default_db() -> String {
