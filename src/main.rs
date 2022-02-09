@@ -123,15 +123,20 @@ pub async fn send_err(
     msg: &Message,
     errtxt: impl std::fmt::Display,
 ) -> CommandResult {
+    Ok(send_err_titled(ctx, msg, "Something went wrong!", errtxt).await?)
+}
+
+pub async fn send_err_titled(
+    ctx: &Context,
+    msg: &Message,
+    title: impl std::fmt::Display,
+    errtxt: impl std::fmt::Display,
+) -> CommandResult {
     let color =
         Colour::from(u32::from_str_radix(&zwei_conf::CONF.err_color.replace("#", ""), 16).unwrap());
     msg.channel_id
         .send_message(ctx, |mes| {
-            mes.embed(|e| {
-                e.color(color)
-                    .title("Something went wrong!")
-                    .description(errtxt)
-            })
+            mes.embed(|e| e.color(color).title(title).description(errtxt))
         })
         .await?;
     Ok(())
