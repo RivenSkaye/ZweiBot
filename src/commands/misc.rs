@@ -60,14 +60,15 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
             "I've been running around for {:} hours, {:} minutes and {:} seconds now.",
             hours, mins, secs
         );
-        return Ok(send_ok(ctx, msg, cmd_title, difftxt).await?);
+        send_ok(ctx, msg, cmd_title, difftxt).await
+    } else {
+        send_err(
+            ctx,
+            msg,
+            "I've been in Lost Blue for so long that I can't even remember when I got here...",
+        )
+        .await
     }
-    return Ok(send_err(
-        ctx,
-        msg,
-        "I've been in Lost Blue for so long that I can't even remember when I got here...",
-    )
-    .await?);
 }
 
 #[command]
@@ -80,7 +81,7 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
     let mins = (diff % 3600) / 60;
     let hours = diff / 3600;
     let difftxt = format!("{:}:{:}:{:}", hours, mins, secs);
-    Ok(send_ok(ctx, msg, "Current UTC time", difftxt).await?)
+    send_ok(ctx, msg, "Current UTC time", difftxt).await
 }
 
 #[command]
@@ -101,7 +102,7 @@ async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
         ownernames.push_str("\n- ");
         ownernames.push_str(&*name);
     }
-    Ok(send_ok(ctx, msg, "Credits", ownernames).await?)
+    send_ok(ctx, msg, "Credits", ownernames).await
 }
 
 #[group("Misc")]
