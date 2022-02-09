@@ -9,7 +9,24 @@ use std::path::PathBuf;
 pub struct Conf {
     pub(crate) token: String,
     pub(crate) owners: HashSet<u64>,
+    #[serde(default = "default_db")]
     pub(crate) database: String,
+    #[serde(default = "default_err_color")]
+    pub(crate) err_color: String,
+    #[serde(default = "default_ok_color")]
+    pub(crate) ok_color: String,
+}
+
+fn default_err_color() -> String {
+    "#9A48C9".to_string()
+}
+
+fn default_ok_color() -> String {
+    "#B82748".to_string()
+}
+
+fn default_db() -> String {
+    "zwei.sdb".to_string()
 }
 
 lazy_static! {
