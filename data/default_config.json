@@ -2,5 +2,7 @@
 	"token": "",
 	"owners": [],
 	"database": "Zwei.sdb",
-	"password": null
+	"password": null,
+	"err_color": "#9A48C9",
+	"ok_color": "#B82748"
 }
