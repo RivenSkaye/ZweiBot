@@ -103,10 +103,16 @@ pub async fn get_name(msg: &Message, ctx: &Context, mem: UserId) -> SerenityResu
 pub async fn try_dm(
     ctx: &Context,
     user: UserId,
+    title: impl std::fmt::Display,
     msg: impl std::fmt::Display,
 ) -> SerenityResult<()> {
+    let color =
+        Colour::from(u32::from_str_radix(&zwei_conf::CONF.ok_color.replace("#", ""), 16).unwrap());
     let chan = user.create_dm_channel(ctx).await?;
-    chan.say(ctx, msg).await?;
+    chan.send_message(ctx, |mes| {
+        mes.embed(|e| e.color(color).title(title).description(msg))
+    })
+    .await?;
     Ok(())
 }
 
