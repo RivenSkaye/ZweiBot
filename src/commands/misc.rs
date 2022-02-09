@@ -5,7 +5,7 @@ use serenity::model::prelude::*;
 use serenity::prelude::*;
 use tokio::time::{sleep, Duration};
 
-use crate::{get_name, ShardManagerContainer, ZweiData, ZweiOwners};
+use crate::{get_name, send_err, send_ok, ShardManagerContainer, ZweiData, ZweiOwners};
 
 #[command]
 #[owners_only]
@@ -16,19 +16,29 @@ use crate::{get_name, ShardManagerContainer, ZweiData, ZweiOwners};
 #[example = "sleep"]
 #[help_available]
 async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let cmd_name = "Shutting down";
     args.trimmed();
     let time: u64 = args.parse::<u64>().unwrap_or(1);
     args.advance();
     let botdata = ctx.data.read().await;
 
     if let Some(manager) = botdata.get::<ShardManagerContainer>() {
-        msg.reply(ctx, format!("I'm taking a nap in {:} seconds.", time))
-            .await?;
+        send_ok(
+            ctx,
+            msg,
+            cmd_name,
+            format!("I'm taking a nap in {:} seconds.", time),
+        )
+        .await?;
         sleep(Duration::from_secs(time)).await;
         manager.lock().await.shutdown_all().await;
     } else {
-        msg.reply(ctx, "I've lost control of Kuro, I'm stopping RIGHT NOW!")
-            .await?;
+        send_err(
+            ctx,
+            msg,
+            "I've lost control of Kuro, I'm stopping RIGHT NOW!",
+        )
+        .await?;
         std::process::exit(0)
     }
     Ok(())
@@ -38,6 +48,7 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 #[description = "Prints the bot's total running time since the `on_ready` event fired."]
 async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     let botdata = ctx.data.read().await;
+    let cmd_title = "Bot uptime";
     if let Some(lifetime) = botdata.get::<ZweiData>() {
         let now = Utc::now().timestamp();
         let starttime = lifetime.get(&String::from("Init")).unwrap();
@@ -49,15 +60,14 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
             "I've been running around for {:} hours, {:} minutes and {:} seconds now.",
             hours, mins, secs
         );
-        msg.reply(ctx, difftxt).await?;
-    } else {
-        msg.reply(
-            ctx,
-            "I've been in Lost Blue for so long that I can't even remember when I got here...",
-        )
-        .await?;
+        return Ok(send_ok(ctx, msg, cmd_title, difftxt).await?);
     }
-    Ok(())
+    return Ok(send_err(
+        ctx,
+        msg,
+        "I've been in Lost Blue for so long that I can't even remember when I got here...",
+    )
+    .await?);
 }
 
 #[command]
@@ -69,12 +79,8 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
     let secs = diff % 60;
     let mins = (diff % 3600) / 60;
     let hours = diff / 3600;
-    let difftxt = format!(
-        "It's now {:} hours, {:} minutes and {:} seconds.",
-        hours, mins, secs
-    );
-    msg.reply(ctx, difftxt).await?;
-    Ok(())
+    let difftxt = format!("{:}:{:}:{:}", hours, mins, secs);
+    Ok(send_ok(ctx, msg, "Current UTC time", difftxt).await?)
 }
 
 #[command]
@@ -95,8 +101,7 @@ async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
         ownernames.push_str("\n- ");
         ownernames.push_str(&*name);
     }
-    msg.reply(ctx, ownernames).await?;
-    Ok(())
+    Ok(send_ok(ctx, msg, "Credits", ownernames).await?)
 }
 
 #[group("Misc")]
