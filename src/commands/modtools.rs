@@ -7,7 +7,7 @@ use serenity::model::{
 use serenity::prelude::*;
 use serenity::Error;
 
-use crate::{get_guildname, get_name, try_dm, ZweiData};
+use crate::{get_guildname, get_name, send_err, send_err_titled, send_ok, try_dm, ZweiData};
 
 #[command]
 #[required_permissions("MANAGE_MESSAGES")]
@@ -22,14 +22,21 @@ async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.advance();
 
     if amount < 1 {
-        msg.reply(ctx, "Could you stop trying to purge thin air?")
-            .await?;
-        return Ok(());
+        return send_err_titled(
+            ctx,
+            msg,
+            "No messages!",
+            "Could you stop trying to purge thin air?",
+        )
+        .await;
     } else if amount > 100 {
-        msg.reply(ctx,
-            "Please keep the amount of messages to purge somewhat manageable. Due to technical limitations, the maximum amount is 100.")
-            .await?;
-        return Ok(());
+        return send_err_titled(
+            ctx,
+            msg,
+            "Too many messages!",
+            "Please keep the amount of messages to purge somewhat manageable. Due to technical limitations, the maximum amount is 100.",
+        )
+        .await;
     }
     let to_delete = msg
         .channel_id
@@ -42,30 +49,29 @@ async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let pinned = amount - to_delete.len() as u64;
     if pinned == amount {
+        let txt;
         if amount > 1 {
-            msg.reply(ctx, "All those messages are pinned, I can't delete them.")
-                .await?;
+            txt = "All those messages are pinned, I can't delete them.";
         } else {
-            msg.reply(ctx, "That message is pinned, I can't delete it.")
-                .await?;
+            txt = "That message is pinned, I can't delete it.";
         }
-        return Ok(());
+        send_err(ctx, msg, txt).await?
     }
 
     let reply = match pinned {
         0 => match amount {
             1 => "Deleting the last message. _You could've done that faster manually._".to_string(),
-            _ => format!("Purging the last {:} messages.", amount),
+            _ => format!("the last {:} messages.", amount),
         },
         _ => format!(
-            "Purging {:} out of the last {:} messages.\nThe other {:} {:} pinned.",
+            "{:} out of the last {:} messages.\nThe other {:} {:} pinned.",
             amount - pinned,
             amount,
             pinned,
             if pinned == 1 { "was" } else { "were" }
         ),
     };
-    msg.reply(ctx, reply).await?;
+    send_ok(ctx, msg, "Purging", reply).await?;
 
     msg.channel_id.delete_messages(&ctx.http, to_delete).await?;
     Ok(())
@@ -82,13 +88,21 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.advance();
 
     if mem_id.0 == 0 {
-        msg.reply(ctx, "Please specify a user to kick by mention or ID.")
-            .await?;
-        return Ok(());
+        return send_err_titled(
+            ctx,
+            msg,
+            "No target provided!",
+            "Please give me a user mention or an ID to kick.",
+        )
+        .await;
     } else if mem_id.0 == msg.guild(ctx).await.unwrap().owner_id.0 {
-        msg.reply(ctx, "I can't kick the owner off their own server.")
-            .await?;
-        return Ok(());
+        return send_err_titled(
+            ctx,
+            msg,
+            "That's not possible!",
+            "I can't kick the owner off their own server.",
+        )
+        .await;
     }
     let memrole = msg
         .guild(ctx)
@@ -116,12 +130,12 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             msg.reply(ctx, "<:ZweiAngery:844167326243880960>").await?;
             return Ok(());
         } else if selfrole.1 <= memrole.1 {
-            msg.reply(
+            return send_err(
                 ctx,
+                msg,
                 "I can't kick someone whose roles are equal to or higher than my own!",
             )
-            .await?;
-            return Ok(());
+            .await;
         }
     };
 
@@ -131,6 +145,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let _ = try_dm(
         ctx,
         mem_id,
+        "<:ZweiShy:844167336336031745> Sorry!",
         format!(
             "You were kicked from {:}.\nReason: {:}",
             get_guildname(msg, ctx).await,
@@ -151,16 +166,15 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             }
             _ => String::from("the provided reason was too long"),
         };
-        msg.reply(ctx, format!("I can't kick {:}, {:}.", fullname, txt))
-            .await?;
-    } else {
-        msg.reply(
-            ctx,
-            format!("I sent {:} away. Be careful if they return.", fullname),
-        )
-        .await?;
+        return send_err(ctx, msg, format!("I can't kick {:}, {:}.", fullname, txt)).await;
     }
-    Ok(())
+    return send_ok(
+        ctx,
+        msg,
+        "User kicked.",
+        format!("I sent {:} away. Be careful if they return.", fullname),
+    )
+    .await;
 }
 
 #[command]
@@ -172,13 +186,21 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.advance();
 
     if mem_id.0 == 0 {
-        msg.reply(ctx, "Please specify a user to ban by mention or ID.")
-            .await?;
-        return Ok(());
+        return send_err_titled(
+            ctx,
+            msg,
+            "No target provided!",
+            "Please give me a user mention or an ID to ban.",
+        )
+        .await;
     } else if mem_id.0 == msg.guild(ctx).await.unwrap().owner_id.0 {
-        msg.reply(ctx, "I can't ban the owner from their own server.")
-            .await?;
-        return Ok(());
+        return send_err_titled(
+            ctx,
+            msg,
+            "That's not possible!",
+            "I can't ban the owner from own server.",
+        )
+        .await;
     }
     let memrole = msg
         .guild(ctx)
@@ -206,12 +228,12 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             msg.reply(ctx, "<:ZweiAngery:844167326243880960>").await?;
             return Ok(());
         } else if selfrole.1 <= memrole.1 {
-            msg.reply(
+            return send_err(
                 ctx,
+                msg,
                 "I can't ban someone whose roles are equal to or higher than my own!",
             )
-            .await?;
-            return Ok(());
+            .await;
         }
     };
 
@@ -223,6 +245,7 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let _ = try_dm(
         ctx,
         mem_id,
+        "<:ZweiShy:844167336336031745> Sorry!",
         format!(
             "You were banned from {:}.\nReason: {:}",
             get_guildname(msg, ctx).await,
@@ -232,9 +255,11 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     .await;
 
     let realdays: u8 = if days > 7 {
-        msg.reply(
+        send_err_titled(
             ctx,
-            "Discord doesn't allow deleting more than 7 days when banning.\nDefaulting to that instead.",
+            msg,
+            "I can't change history",
+            "and Discord doesn't allow deleting more than 7 days when banning.\nDefaulting to that instead.",
         )
         .await?;
         7
@@ -253,19 +278,18 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             }
             _ => String::from("the provided reason was too long"),
         };
-        msg.reply(ctx, format!("I can't ban {:}, {:}.", fullname, txt))
-            .await?;
-    } else {
-        msg.reply(
-            ctx,
-            format!(
-                "I sent {:} off to Lost Blue. You won't see them again.",
-                fullname
-            ),
-        )
-        .await?;
+        return send_err(ctx, msg, format!("I can't ban {:}, {:}.", fullname, txt)).await;
     }
-    Ok(())
+    return send_ok(
+        ctx,
+        msg,
+        "User banned.",
+        format!(
+            "I sent {:} off to Lost Blue. You won't see them again.",
+            fullname
+        ),
+    )
+    .await;
 }
 
 #[group("Modtools")]
