@@ -20,6 +20,7 @@ __pycache__/
 *$py.class
 .Python
 build/
+old_py/
 
 # Rust stuf - Happy rewrite! #
 target/
