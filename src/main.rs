@@ -10,6 +10,7 @@ use serenity::{
     http::Http,
     model::{channel::Message, event::ResumedEvent, gateway::Ready, id::UserId},
     prelude::*,
+    utils::Colour,
     Result as SerenityResult,
 };
 use std::{
@@ -115,6 +116,41 @@ pub async fn get_guildname(msg: &Message, ctx: &Context) -> String {
         .name(ctx)
         .await
         .unwrap_or(String::from(""))
+}
+
+pub async fn send_err(
+    ctx: &Context,
+    msg: &Message,
+    errtxt: impl std::fmt::Display,
+) -> CommandResult {
+    let color =
+        Colour::from(u32::from_str_radix(&zwei_conf::CONF.err_color.replace("#", ""), 16).unwrap());
+    msg.channel_id
+        .send_message(ctx, |mes| {
+            mes.embed(|e| {
+                e.color(color)
+                    .title("Something went wrong!")
+                    .description(errtxt)
+            })
+        })
+        .await?;
+    Ok(())
+}
+
+pub async fn send_ok(
+    ctx: &Context,
+    msg: &Message,
+    title: impl std::fmt::Display,
+    msgtxt: impl std::fmt::Display,
+) -> CommandResult {
+    let color =
+        Colour::from(u32::from_str_radix(&zwei_conf::CONF.ok_color.replace("#", ""), 16).unwrap());
+    msg.channel_id
+        .send_message(ctx, |mes| {
+            mes.embed(|e| e.color(color).title(title).description(msgtxt))
+        })
+        .await?;
+    Ok(())
 }
 
 #[help]
