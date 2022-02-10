@@ -206,7 +206,7 @@ async fn main() {
     let self_id = http.get_current_user().await.unwrap().id;
     let fw = framework::standard::StandardFramework::new()
         .configure(|c| {
-            c.prefix("]")
+            c.prefix(";")
                 .on_mention(Some(self_id))
                 .dynamic_prefix(prefix)
                 .with_whitespace(true)
@@ -239,8 +239,9 @@ async fn main() {
         shard_manager.lock().await.shutdown_all().await;
     });
 
-    bot.start()
-        .await
-        .expect("Zwei is stuck in the Fringe Dimension. Try again...");
-    // do code and get rekt
+    if let Err(death) = bot.start().await {
+        println!("Zwei did not exit cleanly!\n{:}", death);
+        bot.shard_manager.lock().await.shutdown_all().await;
+    }
+    // Perform exit logic here. Save config changes, mangle pending DB ops, etc
 }
