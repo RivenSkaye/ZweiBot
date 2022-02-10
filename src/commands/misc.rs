@@ -39,7 +39,7 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             "I've lost control of Kuro, I'm stopping RIGHT NOW!",
         )
         .await?;
-        std::process::exit(0)
+        panic!("Couldn't get the context manager from bot code!")
     }
     Ok(())
 }
@@ -80,7 +80,7 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
     let secs = diff % 60;
     let mins = (diff % 3600) / 60;
     let hours = diff / 3600;
-    let difftxt = format!("{:}:{:}:{:}", hours, mins, secs);
+    let difftxt = format!("{:02}:{:02}:{:02}", hours, mins, secs);
     send_ok(ctx, msg, "Current UTC time", difftxt).await
 }
 
