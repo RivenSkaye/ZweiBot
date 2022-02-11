@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 use serde_json as sj;
-use std::collections::HashSet;
-use std::fs::{self, File};
-use std::io::{self, Write};
-use std::path::PathBuf;
+use std::{
+    collections::HashSet,
+    fs::{self, File},
+    io::{self, Write},
+    path::PathBuf,
+};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Conf {

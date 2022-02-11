@@ -1,11 +1,15 @@
-use serenity::framework::standard::macros::{command, group};
-use serenity::framework::standard::{Args, CommandResult};
-use serenity::model::{
-    id::{MessageId, UserId},
+use serenity::{
+    framework::standard::{
+        macros::{command, group},
+        Args, CommandResult,
+    },
+    model::{
+        id::{MessageId, UserId},
+        prelude::*,
+    },
     prelude::*,
+    Error,
 };
-use serenity::prelude::*;
-use serenity::Error;
 
 use crate::{get_guildname, get_name, send_err, send_err_titled, send_ok, try_dm, ZweiData};
 
