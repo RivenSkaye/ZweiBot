@@ -30,7 +30,7 @@ fn default_ok_color() -> String {
 }
 
 fn default_db() -> String {
-    "zwei.sdb".to_string()
+    format!("{:}/Zwei.sdb", DATADIR.display())
 }
 
 lazy_static! {
@@ -68,8 +68,7 @@ fn get_data_dir() -> PathBuf {
 }
 
 fn create_default_conf(pth: PathBuf) -> Result<File, io::Error> {
-    let mut dconf = Conf::default();
-    dconf.database = String::from("Zwei.sdb");
+    let dconf = Conf::default();
     let mut f = File::create(pth).unwrap();
     f.write(sj::ser::to_string_pretty(&dconf)?.as_bytes())?;
     Ok(f)
