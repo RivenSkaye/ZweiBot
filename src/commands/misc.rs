@@ -141,7 +141,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             _ => {
                 let etxt = "Something went wrong requesting the database connection!";
                 send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-                Err(etxt)?;
+                return Err(etxt.into());
             }
         };
         let dbc = conn.lock().await;
@@ -151,7 +151,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             _ => {
                 let etxt = "Couldn't update the prefix!";
                 send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-                Err(String::from(etxt))?
+                return Err(etxt.into());
             }
         };
     }
@@ -163,7 +163,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         } else {
             let etxt = "Can't update the server prefix in the cache!";
             send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-            Err(String::from(etxt))?
+            return Err(etxt.into());
         }
     }
 
