@@ -136,27 +136,24 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let pfx = String::from(args.rest());
     {
         let botdata = ctx.data.read().await;
-        if let Some(conn) = botdata.get::<ZweiDbConn>() {
-            let dbc = conn.lock().await;
-            let res = db::set_prefix(&dbc, guild, pfx.clone())?;
-            match res {
-                1 => (),
-                0 => {
-                    let etxt = "Couldn't update the prefix!";
-                    send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-                    Err(String::from(etxt))?
-                }
-                _ => {
-                    let etxt = "Prefix change affected multiple rows...";
-                    send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-                    ()
-                }
-            };
-        } else {
-            let etxt = "Something went wrong requesting the database connection!";
-            send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-            Err(String::from(etxt))?;
-        }
+        let conn = match botdata.get::<ZweiDbConn>() {
+            Some(conn) => conn,
+            _ => {
+                let etxt = "Something went wrong requesting the database connection!";
+                send_err_titled(ctx, msg, "Change prefix", etxt).await?;
+                Err(etxt)?;
+            }
+        };
+        let dbc = conn.lock().await;
+        let res = db::set_prefix(&dbc, guild, pfx.clone())?;
+        match res {
+            1.. => (),
+            _ => {
+                let etxt = "Couldn't update the prefix!";
+                send_err_titled(ctx, msg, "Change prefix", etxt).await?;
+                Err(String::from(etxt))?
+            }
+        };
     }
 
     {
