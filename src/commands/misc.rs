@@ -165,7 +165,6 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             data.insert(guild, pfx.clone());
         } else {
             let etxt = "Can't update the server prefix in the cache!";
-            println!("{:}", etxt);
             send_err_titled(ctx, msg, "Change prefix", etxt).await?;
             Err(String::from(etxt))?
         }
@@ -181,7 +180,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 }
 
 #[command]
-#[description = "Change the guild prefix"]
+#[description = "Clear the guild prefix"]
 #[only_in("guilds")]
 #[required_permissions("MANAGE_GUILD")]
 async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
@@ -217,7 +216,6 @@ async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
             data.remove(&guild);
         } else {
             let etxt = "Can't update the cache!";
-            println!("{:}", etxt);
             send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
             Err(String::from(etxt))?
         }
