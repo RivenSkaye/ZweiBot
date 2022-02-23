@@ -133,7 +133,7 @@ async fn get(ctx: &Context, msg: &Message) -> CommandResult {
 #[example = "z;"]
 async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let guild: u64 = msg.guild_id.unwrap().0;
-    let pfx = String::from(args.rest());
+    let pfx = args.rest();
     {
         let botdata = ctx.data.read().await;
         let conn = match botdata.get::<ZweiDbConn>() {
@@ -145,7 +145,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             }
         };
         let dbc = conn.lock().await;
-        let res = db::set_prefix(&dbc, guild, pfx.clone())?;
+        let res = db::set_prefix(&dbc, guild, pfx)?;
         match res {
             1.. => (),
             _ => {
@@ -159,7 +159,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     {
         let mut wbd = ctx.data.write().await;
         if let Some(data) = wbd.get_mut::<ZweiPrefixes>() {
-            data.insert(guild, pfx.clone());
+            data.insert(guild, pfx.to_owned());
         } else {
             let etxt = "Can't update the server prefix in the cache!";
             send_err_titled(ctx, msg, "Change prefix", etxt).await?;
