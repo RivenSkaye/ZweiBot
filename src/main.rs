@@ -45,7 +45,7 @@ impl TypeMapKey for ZweiOwners {
     type Value = HashSet<UserId>;
 }
 
-use db::ZweiDBConn;
+use db::ZweiDbConn;
 
 struct Handler;
 #[async_trait]
@@ -308,7 +308,7 @@ async fn main() {
         zd.insert("id".to_string(), i64::from(self_id));
         data.insert::<ZweiData>(zd);
         data.insert::<ZweiOwners>(owners.clone());
-        data.insert::<ZweiDBConn>(arcsqlite);
+        data.insert::<ZweiDbConn>(arcsqlite);
         data.insert::<ZweiPrefixes>(
             db::get_all_prefixes(
                 &rusqlite::Connection::open(zwei_conf::DATADIR.join(&conf.database))

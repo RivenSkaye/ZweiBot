@@ -2,8 +2,8 @@ pub use rusqlite::{params, Connection, Result as SQLRes};
 use serenity::prelude::{Mutex, TypeMapKey};
 use std::{collections::HashMap, sync::Arc};
 
-pub struct ZweiDBConn;
-impl TypeMapKey for ZweiDBConn {
+pub struct ZweiDbConn;
+impl TypeMapKey for ZweiDbConn {
     type Value = Arc<Mutex<Connection>>;
 }
 
