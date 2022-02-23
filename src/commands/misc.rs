@@ -9,15 +9,18 @@ use serenity::{
 };
 use tokio::time::{sleep, Duration};
 
-use crate::{get_name, send_err, send_ok, ShardManagerContainer, ZweiData, ZweiOwners};
+use crate::{
+    db, get_name, get_prefix, send_err, send_err_titled, send_ok, ShardManagerContainer,
+    ZweiDBConn, ZweiData, ZweiOwners, ZweiPrefixes,
+};
 
 #[command]
 #[owners_only]
 #[max_args(1)]
 #[aliases("shutdown", "panic", "die", "sleep")]
 #[description = "Shuts down the bot, owner only. Optionally takes a time in seconds to wait, defaults to 1 second."]
-#[example = "shutdown 5"]
-#[example = "sleep"]
+#[example = "5"]
+#[example = ""]
 #[help_available]
 async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let cmd_name = "Shutting down";
@@ -109,7 +112,135 @@ async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
     send_ok(ctx, msg, "Credits", ownernames).await
 }
 
+#[command]
+#[description = "Check the prefix for the current context"]
+async fn get(ctx: &Context, msg: &Message) -> CommandResult {
+    send_ok(
+        ctx,
+        msg,
+        "Prefix",
+        format!("I'm listening for {:} in here.", get_prefix(msg, ctx).await),
+    )
+    .await
+}
+
+#[command]
+#[description = "Change the guild prefix"]
+#[min_args(1)]
+#[max_args(1)]
+#[only_in("guilds")]
+#[required_permissions("MANAGE_GUILD")]
+#[example = "z;"]
+async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let guild: u64 = msg.guild_id.unwrap().0;
+    let pfx = String::from(args.rest());
+    {
+        let botdata = ctx.data.read().await;
+        if let Some(conn) = botdata.get::<ZweiDBConn>() {
+            let dbc = conn.lock().await;
+            let res = db::set_prefix(&dbc, guild, pfx.clone())?;
+            match res {
+                1 => (),
+                0 => {
+                    let etxt = "Couldn't update the prefix!";
+                    send_err_titled(ctx, msg, "Change prefix", etxt).await?;
+                    Err(String::from(etxt))?
+                }
+                _ => {
+                    let etxt = "Prefix change affected multiple rows...";
+                    send_err_titled(ctx, msg, "Change prefix", etxt).await?;
+                    ()
+                }
+            };
+        } else {
+            let etxt = "Something went wrong requesting the database connection!";
+            send_err_titled(ctx, msg, "Change prefix", etxt).await?;
+            Err(String::from(etxt))?;
+        }
+    }
+
+    {
+        let mut wbd = ctx.data.write().await;
+        if let Some(data) = wbd.get_mut::<ZweiPrefixes>() {
+            data.insert(guild, pfx.clone());
+        } else {
+            let etxt = "Can't update the server prefix in the cache!";
+            println!("{:}", etxt);
+            send_err_titled(ctx, msg, "Change prefix", etxt).await?;
+            Err(String::from(etxt))?
+        }
+    }
+
+    send_ok(
+        ctx,
+        msg,
+        "Prefix changed",
+        format!("From now on I'll respond to {:} here.", pfx),
+    )
+    .await
+}
+
+#[command]
+#[description = "Change the guild prefix"]
+#[only_in("guilds")]
+#[required_permissions("MANAGE_GUILD")]
+async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild: u64 = msg.guild_id.unwrap().0;
+    {
+        let botdata = ctx.data.read().await;
+        if let Some(conn) = botdata.get::<ZweiDBConn>() {
+            let dbc = conn.lock().await;
+            let res = db::remove_prefix(&dbc, guild)?;
+            match res {
+                1 => (),
+                0 => {
+                    let etxt = "There was no custom prefix stored for this server.";
+                    send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
+                    Err(String::from(etxt))?
+                }
+                _ => {
+                    let etxt = "Prefix change affected multiple rows...";
+                    send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
+                    ()
+                }
+            };
+        } else {
+            let etxt = "Something went wrong requesting the database connection!";
+            send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
+            Err(String::from(etxt))?;
+        }
+    }
+
+    {
+        let mut wbd = ctx.data.write().await;
+        if let Some(data) = wbd.get_mut::<ZweiPrefixes>() {
+            data.remove(&guild);
+        } else {
+            let etxt = "Can't update the cache!";
+            println!("{:}", etxt);
+            send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
+            Err(String::from(etxt))?
+        }
+    }
+
+    send_ok(
+        ctx,
+        msg,
+        "Prefix cleared",
+        "From now on I'll respond to ; here.",
+    )
+    .await
+}
+
 #[group("Misc")]
 #[commands(exit, uptime, now, owners)]
 #[summary = "Miscellaneous commands for bot management and statistics."]
 struct Misc;
+
+#[group("Prefix")]
+#[commands(get, set, clear)]
+#[summary = "Get or set the prefix"]
+#[prefixes("prefix")]
+#[default_command(get)]
+#[help_available]
+struct Prefix;
