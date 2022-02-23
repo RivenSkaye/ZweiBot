@@ -144,15 +144,12 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let fullname = get_name(msg, ctx, mem_id).await?;
     let reason = args.remains().unwrap_or("You know what you did!");
 
+    let guildname = get_guildname(msg, ctx).await;
     let _ = try_dm(
         ctx,
         mem_id,
         "<:ZweiShy:844167336336031745> Sorry!",
-        format!(
-            "You were kicked from {:}.\nReason: {:}",
-            get_guildname(msg, ctx).await,
-            reason
-        ),
+        format!("You were kicked from {guildname}.\nReason: {reason}"),
     )
     .await;
 
@@ -164,17 +161,17 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     {
         let txt = match e {
             Error::Model(ModelError::InvalidPermissions(missing_perms)) => {
-                format!("please provide me with the `{:}` permission", missing_perms)
+                format!("please provide me with the `{missing_perms}` permission")
             }
-            _ => String::from("the provided reason was too long"),
+            _ => "the provided reason was too long".to_owned(),
         };
-        return send_err(ctx, msg, format!("I can't kick {:}, {:}.", fullname, txt)).await;
+        return send_err(ctx, msg, format!("I can't kick {fullname}, {txt}.")).await;
     }
     return send_ok(
         ctx,
         msg,
         "User kicked.",
-        format!("I sent {:} away. Be careful if they return.", fullname),
+        format!("I sent {fullname} away. Be careful if they return."),
     )
     .await;
 }
@@ -244,15 +241,12 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.advance();
     let reason = args.remains().unwrap_or("You know what you did!");
 
+    let guildname = get_guildname(msg, ctx).await;
     let _ = try_dm(
         ctx,
         mem_id,
         "<:ZweiShy:844167336336031745> Sorry!",
-        format!(
-            "You were banned from {:}.\nReason: {:}",
-            get_guildname(msg, ctx).await,
-            reason
-        ),
+        format!("You were banned from {guildname}.\nReason: {reason}",),
     )
     .await;
 
@@ -276,20 +270,17 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     {
         let txt = match e {
             Error::Model(ModelError::InvalidPermissions(missing_perms)) => {
-                format!("please provide me with the `{:}` permission", missing_perms)
+                format!("please provide me with the `{missing_perms}` permission")
             }
-            _ => String::from("the provided reason was too long"),
+            _ => "the provided reason was too long".to_owned(),
         };
-        return send_err(ctx, msg, format!("I can't ban {:}, {:}.", fullname, txt)).await;
+        return send_err(ctx, msg, format!("I can't ban {fullname}, {txt}.")).await;
     }
     return send_ok(
         ctx,
         msg,
         "User banned.",
-        format!(
-            "I sent {:} off to Lost Blue. You won't see them again.",
-            fullname
-        ),
+        format!("I sent {fullname} off to Lost Blue. You won't see them again."),
     )
     .await;
 }

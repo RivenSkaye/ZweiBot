@@ -34,7 +34,7 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             ctx,
             msg,
             cmd_name,
-            format!("I'm taking a nap in {:} seconds.", time),
+            format!("I'm taking a nap in {time} seconds."),
         )
         .await?;
         sleep(Duration::from_secs(time)).await;
@@ -58,14 +58,13 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     let cmd_title = "Bot uptime";
     if let Some(lifetime) = botdata.get::<ZweiData>() {
         let now = Utc::now().timestamp();
-        let starttime = lifetime.get(&String::from("Init")).unwrap();
+        let starttime = &lifetime["Init"];
         let diff = now - *starttime;
         let secs = diff % 60;
         let mins = (diff % 3600) / 60;
         let hours = diff / 3600;
         let difftxt = format!(
-            "I've been running around for {:} hours, {:} minutes and {:} seconds now.",
-            hours, mins, secs
+            "I've been running around for {hours} hours, {mins} minutes and {secs} seconds now.",
         );
         send_ok(ctx, msg, cmd_title, difftxt).await
     } else {
@@ -87,7 +86,7 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
     let secs = diff % 60;
     let mins = (diff % 3600) / 60;
     let hours = diff / 3600;
-    let difftxt = format!("{:02}:{:02}:{:02}", hours, mins, secs);
+    let difftxt = format!("{hours:02}:{mins:02}:{secs:02}");
     send_ok(ctx, msg, "Current UTC time", difftxt).await
 }
 
@@ -171,7 +170,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         ctx,
         msg,
         "Prefix changed",
-        format!("From now on I'll respond to {:} here.", pfx),
+        format!("From now on I'll respond to {pfx} here."),
     )
     .await
 }
