@@ -70,14 +70,6 @@ impl EventHandler for Handler {
     }
 }
 
-/// Function for dynamic prefixing. Matches the cache for custom prefixes,
-/// if none is found for this server, returns the default instead.
-#[framework::standard::macros::hook]
-async fn prefix(_ctx: &Context, _msg: &Message) -> Option<String> {
-    // Well, polling the cache is a planned feature, actually...
-    Some(String::from(";"))
-}
-
 /// Function to resolve an ID into a username. Attempts to get the proper
 /// _display name_ for the context first, but falls back to the normal
 /// username if a nickname isn't set or the context is not a guild.
@@ -99,6 +91,19 @@ pub async fn get_guildname(msg: &Message, ctx: &Context) -> String {
         .name(ctx)
         .await
         .unwrap_or(String::from(""))
+}
+
+/// Function to get the prefix for the current context.
+/// Returns either the default `;` in DMs or when the guild has no prefix,
+/// or returns the guild-specific prefix if one is set.
+pub async fn get_prefix(msg: &Message, ctx: &Context) -> String {
+    let def = String::from(";");
+    let botdata = ctx.data.read().await;
+    botdata
+        .get::<ZweiPrefixes>()
+        .and_then(|d| msg.guild_id.and_then(|g| d.get(&g.0)))
+        .cloned()
+        .unwrap_or(def)
 }
 
 /// Function to try sending a direct message to a user. This is used to try
@@ -231,6 +236,7 @@ pub async fn send_ok(
 #[embed_success_colour("#B82748")]
 #[strikethrough_commands_tip_in_guild = ""]
 #[strikethrough_commands_tip_in_dm = ""]
+#[group_prefix = "All commands include"]
 async fn zwei_help(
     ctx: &Context,
     msg: &Message,
@@ -241,6 +247,13 @@ async fn zwei_help(
 ) -> CommandResult {
     framework::standard::help_commands::with_embeds(ctx, msg, args, opts, groups, owners).await;
     Ok(())
+}
+
+/// Function for dynamic prefixing. Checks the cache for custom prefixes,
+/// if none is found for this server, returns the default instead.
+#[framework::standard::macros::hook]
+async fn prefix(ctx: &Context, msg: &Message) -> Option<String> {
+    Some(get_prefix(msg, ctx).await)
 }
 
 #[tokio::main]
@@ -266,7 +279,7 @@ async fn main() {
     let self_id = http.get_current_user().await.unwrap().id;
     let fw = framework::standard::StandardFramework::new()
         .configure(|c| {
-            c.prefix(";")
+            c.prefix("")
                 .on_mention(Some(self_id))
                 .dynamic_prefix(prefix)
                 .with_whitespace(true)
@@ -275,7 +288,8 @@ async fn main() {
         })
         .help(&ZWEI_HELP)
         .group(&commands::modtools::MODTOOLS_GROUP)
-        .group(&commands::misc::MISC_GROUP);
+        .group(&commands::misc::MISC_GROUP)
+        .group(&commands::misc::PREFIX_GROUP);
     let mut bot = Client::builder(&conf.token)
         .event_handler(Handler)
         .framework(fw)
@@ -295,6 +309,13 @@ async fn main() {
         data.insert::<ZweiData>(zd);
         data.insert::<ZweiOwners>(owners.clone());
         data.insert::<ZweiDBConn>(arcsqlite);
+        data.insert::<ZweiPrefixes>(
+            db::get_all_prefixes(
+                &rusqlite::Connection::open(zwei_conf::DATADIR.join(&conf.database))
+                    .expect("Can't open the database!"),
+            )
+            .unwrap(),
+        )
     }
     let shard_manager = bot.shard_manager.clone();
     tokio::spawn(async move {
