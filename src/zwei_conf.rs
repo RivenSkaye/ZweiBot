@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json as sj;
 use std::{
@@ -33,10 +34,8 @@ fn default_db() -> String {
     format!("{:}/Zwei.sdb", DATADIR.display())
 }
 
-lazy_static! {
-    pub(crate) static ref DATADIR: PathBuf = get_data_dir();
-    pub(crate) static ref CONF: Conf = read_conf().unwrap();
-}
+pub(crate) static DATADIR: Lazy<PathBuf> = Lazy::new(get_data_dir);
+pub(crate) static CONF: Lazy<Conf> = Lazy::new(|| read_conf().unwrap());
 
 fn get_data_dir() -> PathBuf {
     let pth: PathBuf = std::env::current_exe()

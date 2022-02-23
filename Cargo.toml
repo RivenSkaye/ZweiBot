@@ -11,10 +11,10 @@ license-file = "LICENSE"
 serenity = { version="0.10", features=["framework", "standard_framework"] }
 serde = "^1.0.100"
 serde_json = "1.0.70"
-lazy_static = "1.4.0"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "time", "signal"] }
 chrono = "0.4"
 rusqlite = {version="0.26", features=["bundled"]}
+once_cell = "1.9.0"
 
 [profile.release]
 opt-level = 2
@@ -28,3 +28,5 @@ codegen-units = 96
 [profile.release.build-override]
 opt-level = 2
 codegen-units = 96
+
+[features]
