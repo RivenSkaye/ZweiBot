@@ -95,20 +95,17 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
 #[help_available]
 #[aliases("credits", "creators")]
 async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
-    let mut owner_ids = Vec::new();
-    let mut ownernames = String::from(
-        "These are the wonderful people who wrote me or were guinea pigs for testing!",
-    );
     let botdata = ctx.data.read().await;
-    if let Some(owners) = botdata.get::<ZweiOwners>() {
-        owners.iter().for_each(|o| owner_ids.push(o));
+    let owner_ids = botdata.get::<ZweiOwners>().into_iter().flatten().copied();
+
+    let mut owner_names = vec![
+        "These are the wonderful people who wrote me or were guinea pigs for testing!".to_owned(),
+    ];
+    for id in owner_ids {
+        owner_names.push(get_name(msg, ctx, id).await?);
     }
-    while owner_ids.len() > 0 {
-        let name = get_name(msg, ctx, *owner_ids.pop().unwrap()).await?;
-        ownernames.push_str("\n- ");
-        ownernames.push_str(&*name);
-    }
-    send_ok(ctx, msg, "Credits", ownernames).await
+
+    send_ok(ctx, msg, "Credits", owner_names.join("\n- ")).await
 }
 
 #[command]
