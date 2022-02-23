@@ -10,7 +10,7 @@ use serenity::{
     http::Http,
     model::{channel::Message, event::ResumedEvent, gateway::Ready, id::UserId},
     prelude::*, // also implies tokio Mutex
-    utils::Colour,
+    utils::Color,
     Result as SerenityResult,
 };
 use std::{
@@ -125,7 +125,7 @@ pub async fn try_dm(
     msg: impl std::fmt::Display,
 ) -> SerenityResult<()> {
     let color =
-        Colour::from(u32::from_str_radix(&zwei_conf::CONF.ok_color.replace("#", ""), 16).unwrap());
+        Color::from(u32::from_str_radix(&zwei_conf::CONF.ok_color.replace("#", ""), 16).unwrap());
     let chan = user.create_dm_channel(ctx).await?;
     chan.send_message(ctx, |mes| {
         mes.embed(|e| e.color(color).title(title).description(msg))
@@ -193,7 +193,7 @@ pub async fn send_err_titled(
     errtxt: impl std::fmt::Display,
 ) -> CommandResult {
     let color =
-        Colour::from(u32::from_str_radix(&zwei_conf::CONF.err_color.replace("#", ""), 16).unwrap());
+        Color::from(u32::from_str_radix(&zwei_conf::CONF.err_color.replace("#", ""), 16).unwrap());
     msg.channel_id
         .send_message(ctx, |mes| {
             mes.embed(|e| e.color(color).title(title).description(errtxt))
@@ -220,7 +220,7 @@ pub async fn send_ok(
     msgtxt: impl std::fmt::Display,
 ) -> CommandResult {
     let color =
-        Colour::from(u32::from_str_radix(&zwei_conf::CONF.ok_color.replace("#", ""), 16).unwrap());
+        Color::from(u32::from_str_radix(&zwei_conf::CONF.ok_color.replace("#", ""), 16).unwrap());
     msg.channel_id
         .send_message(ctx, |mes| {
             mes.embed(|e| e.color(color).title(title).description(msgtxt))
