@@ -34,7 +34,7 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             ctx,
             msg,
             cmd_name,
-            format!("I'm taking a nap in {:} seconds.", time),
+            format!("I'm taking a nap in {time} seconds."),
         )
         .await?;
         sleep(Duration::from_secs(time)).await;
@@ -58,14 +58,13 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     let cmd_title = "Bot uptime";
     if let Some(lifetime) = botdata.get::<ZweiData>() {
         let now = Utc::now().timestamp();
-        let starttime = lifetime.get(&String::from("Init")).unwrap();
+        let starttime = &lifetime["Init"];
         let diff = now - *starttime;
         let secs = diff % 60;
         let mins = (diff % 3600) / 60;
         let hours = diff / 3600;
         let difftxt = format!(
-            "I've been running around for {:} hours, {:} minutes and {:} seconds now.",
-            hours, mins, secs
+            "I've been running around for {hours} hours, {mins} minutes and {secs} seconds now.",
         );
         send_ok(ctx, msg, cmd_title, difftxt).await
     } else {
@@ -87,7 +86,7 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
     let secs = diff % 60;
     let mins = (diff % 3600) / 60;
     let hours = diff / 3600;
-    let difftxt = format!("{:02}:{:02}:{:02}", hours, mins, secs);
+    let difftxt = format!("{hours:02}:{mins:02}:{secs:02}");
     send_ok(ctx, msg, "Current UTC time", difftxt).await
 }
 
@@ -96,20 +95,17 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
 #[help_available]
 #[aliases("credits", "creators")]
 async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
-    let mut owner_ids = Vec::new();
-    let mut ownernames = String::from(
-        "These are the wonderful people who wrote me or were guinea pigs for testing!",
-    );
     let botdata = ctx.data.read().await;
-    if let Some(owners) = botdata.get::<ZweiOwners>() {
-        owners.iter().for_each(|o| owner_ids.push(o));
+    let owner_ids = botdata.get::<ZweiOwners>().into_iter().flatten().copied();
+
+    let mut owner_names = vec![
+        "These are the wonderful people who wrote me or were guinea pigs for testing!".to_owned(),
+    ];
+    for id in owner_ids {
+        owner_names.push(get_name(msg, ctx, id).await?);
     }
-    while owner_ids.len() > 0 {
-        let name = get_name(msg, ctx, *owner_ids.pop().unwrap()).await?;
-        ownernames.push_str("\n- ");
-        ownernames.push_str(&*name);
-    }
-    send_ok(ctx, msg, "Credits", ownernames).await
+
+    send_ok(ctx, msg, "Credits", owner_names.join("\n- ")).await
 }
 
 #[command]
@@ -133,7 +129,7 @@ async fn get(ctx: &Context, msg: &Message) -> CommandResult {
 #[example = "z;"]
 async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let guild: u64 = msg.guild_id.unwrap().0;
-    let pfx = String::from(args.rest());
+    let pfx = args.rest();
     {
         let botdata = ctx.data.read().await;
         let conn = match botdata.get::<ZweiDbConn>() {
@@ -141,17 +137,17 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             _ => {
                 let etxt = "Something went wrong requesting the database connection!";
                 send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-                Err(etxt)?;
+                return Err(etxt.into());
             }
         };
         let dbc = conn.lock().await;
-        let res = db::set_prefix(&dbc, guild, pfx.clone())?;
+        let res = db::set_prefix(&dbc, guild, pfx)?;
         match res {
             1.. => (),
             _ => {
                 let etxt = "Couldn't update the prefix!";
                 send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-                Err(String::from(etxt))?
+                return Err(etxt.into());
             }
         };
     }
@@ -159,11 +155,11 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     {
         let mut wbd = ctx.data.write().await;
         if let Some(data) = wbd.get_mut::<ZweiPrefixes>() {
-            data.insert(guild, pfx.clone());
+            data.insert(guild, pfx.to_owned());
         } else {
             let etxt = "Can't update the server prefix in the cache!";
             send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-            Err(String::from(etxt))?
+            return Err(etxt.into());
         }
     }
 
@@ -171,7 +167,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         ctx,
         msg,
         "Prefix changed",
-        format!("From now on I'll respond to {:} here.", pfx),
+        format!("From now on I'll respond to {pfx} here."),
     )
     .await
 }

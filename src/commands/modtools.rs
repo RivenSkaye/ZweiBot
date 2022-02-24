@@ -3,10 +3,7 @@ use serenity::{
         macros::{command, group},
         Args, CommandResult,
     },
-    model::{
-        id::{MessageId, UserId},
-        prelude::*,
-    },
+    model::{id::UserId, prelude::*},
     prelude::*,
     Error,
 };
@@ -42,42 +39,43 @@ async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         )
         .await;
     }
-    let to_delete = msg
+
+    let recent_messages = msg
         .channel_id
         .messages(&ctx.http, |m| m.before(msg.id).limit(amount))
-        .await?
-        .into_iter()
-        .filter(|m| !m.pinned)
-        .map(|m| m.id)
-        .collect::<Vec<MessageId>>();
+        .await?;
 
-    let pinned = amount - to_delete.len() as u64;
-    if pinned == amount {
-        let txt;
-        if amount > 1 {
-            txt = "All those messages are pinned, I can't delete them.";
+    let mut num_pinned = 0;
+    let mut to_delete = Vec::with_capacity(recent_messages.len());
+    for msg in recent_messages {
+        if msg.pinned {
+            num_pinned += 1;
         } else {
-            txt = "That message is pinned, I can't delete it.";
+            to_delete.push(msg.id);
         }
-        send_err(ctx, msg, txt).await?
     }
 
-    let reply = match pinned {
-        0 => match amount {
-            1 => "Deleting the last message. _You could've done that faster manually._".to_string(),
-            _ => format!("the last {:} messages.", amount),
-        },
-        _ => format!(
-            "{:} out of the last {:} messages.\nThe other {:} {:} pinned.",
-            amount - pinned,
-            amount,
-            pinned,
-            if pinned == 1 { "was" } else { "were" }
-        ),
+    let reply = match (to_delete.len(), num_pinned) {
+        (0, 1) => Err("That message is pinned. I can't delete it."),
+        (0, _) => Err("Those messages are all pinned. I can't delete them."),
+        (1, 0) => Ok("the last message. _You could've done that faster manually._".to_owned()),
+        (n, 0) => Ok(format!("the last {n} messages.")),
+        (n, 1) => Ok(format!(
+            "{n} out of the last {amount} messages. The other one was pinned."
+        )),
+        (n, p) => Ok(format!(
+            "{n} out of the last {amount} messages. The other {p} were pinned."
+        )),
     };
-    send_ok(ctx, msg, "Purging", reply).await?;
 
-    msg.channel_id.delete_messages(&ctx.http, to_delete).await?;
+    match reply {
+        Ok(r) => {
+            send_ok(ctx, msg, "Purging", r).await?;
+            msg.channel_id.delete_messages(&ctx.http, to_delete).await?;
+        }
+        Err(e) => send_err(ctx, msg, e).await?,
+    }
+
     Ok(())
 }
 
@@ -146,15 +144,12 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let fullname = get_name(msg, ctx, mem_id).await?;
     let reason = args.remains().unwrap_or("You know what you did!");
 
+    let guildname = get_guildname(msg, ctx).await;
     let _ = try_dm(
         ctx,
         mem_id,
         "<:ZweiShy:844167336336031745> Sorry!",
-        format!(
-            "You were kicked from {:}.\nReason: {:}",
-            get_guildname(msg, ctx).await,
-            reason
-        ),
+        format!("You were kicked from {guildname}.\nReason: {reason}"),
     )
     .await;
 
@@ -166,17 +161,17 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     {
         let txt = match e {
             Error::Model(ModelError::InvalidPermissions(missing_perms)) => {
-                format!("please provide me with the `{:}` permission", missing_perms)
+                format!("please provide me with the `{missing_perms}` permission")
             }
-            _ => String::from("the provided reason was too long"),
+            _ => "the provided reason was too long".to_owned(),
         };
-        return send_err(ctx, msg, format!("I can't kick {:}, {:}.", fullname, txt)).await;
+        return send_err(ctx, msg, format!("I can't kick {fullname}, {txt}.")).await;
     }
     return send_ok(
         ctx,
         msg,
         "User kicked.",
-        format!("I sent {:} away. Be careful if they return.", fullname),
+        format!("I sent {fullname} away. Be careful if they return."),
     )
     .await;
 }
@@ -246,15 +241,12 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.advance();
     let reason = args.remains().unwrap_or("You know what you did!");
 
+    let guildname = get_guildname(msg, ctx).await;
     let _ = try_dm(
         ctx,
         mem_id,
         "<:ZweiShy:844167336336031745> Sorry!",
-        format!(
-            "You were banned from {:}.\nReason: {:}",
-            get_guildname(msg, ctx).await,
-            reason
-        ),
+        format!("You were banned from {guildname}.\nReason: {reason}",),
     )
     .await;
 
@@ -278,20 +270,17 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     {
         let txt = match e {
             Error::Model(ModelError::InvalidPermissions(missing_perms)) => {
-                format!("please provide me with the `{:}` permission", missing_perms)
+                format!("please provide me with the `{missing_perms}` permission")
             }
-            _ => String::from("the provided reason was too long"),
+            _ => "the provided reason was too long".to_owned(),
         };
-        return send_err(ctx, msg, format!("I can't ban {:}, {:}.", fullname, txt)).await;
+        return send_err(ctx, msg, format!("I can't ban {fullname}, {txt}.")).await;
     }
     return send_ok(
         ctx,
         msg,
         "User banned.",
-        format!(
-            "I sent {:} off to Lost Blue. You won't see them again.",
-            fullname
-        ),
+        format!("I sent {fullname} off to Lost Blue. You won't see them again."),
     )
     .await;
 }

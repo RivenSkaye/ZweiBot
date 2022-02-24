@@ -12,8 +12,7 @@ pub fn get_all_prefixes(conn: &Connection) -> SQLRes<HashMap<u64, String>> {
     let mut result = prep.query([])?;
 
     let mut pfxs = HashMap::new();
-    while let Some(result_row) = result.next()? {
-        let row = result_row;
+    while let Some(row) = result.next()? {
         let id: i64 = row.get(0)?;
         let pfx = row.get(1)?;
         pfxs.insert(id as u64, pfx);
@@ -21,7 +20,7 @@ pub fn get_all_prefixes(conn: &Connection) -> SQLRes<HashMap<u64, String>> {
     Ok(pfxs)
 }
 
-pub fn set_prefix(conn: &Connection, guild: u64, pfx: String) -> SQLRes<usize> {
+pub fn set_prefix(conn: &Connection, guild: u64, pfx: &str) -> SQLRes<usize> {
     conn.execute(
         "INSERT OR REPLACE INTO prefixes VALUES ($1, $2)",
         params![guild as i64, pfx],

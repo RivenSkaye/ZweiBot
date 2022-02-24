@@ -22,9 +22,6 @@ mod commands;
 mod db;
 mod zwei_conf;
 
-#[macro_use]
-extern crate lazy_static;
-
 pub struct ShardManagerContainer;
 impl TypeMapKey for ShardManagerContainer {
     type Value = Arc<Mutex<ShardManager>>;
