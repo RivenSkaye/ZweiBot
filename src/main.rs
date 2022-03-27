@@ -168,7 +168,7 @@ pub async fn send_err(
     msg: &Message,
     errtxt: impl std::fmt::Display,
 ) -> CommandResult {
-    Ok(send_err_titled(ctx, msg, "Something went wrong!", errtxt).await?)
+    send_err_titled(ctx, msg, "Something went wrong!", errtxt).await
 }
 
 /// Central function to send an embed indicating something went wrong.
@@ -286,7 +286,8 @@ async fn main() {
         .help(&ZWEI_HELP)
         .group(&commands::modtools::MODTOOLS_GROUP)
         .group(&commands::misc::MISC_GROUP)
-        .group(&commands::misc::PREFIX_GROUP);
+        .group(&commands::misc::PREFIX_GROUP)
+        .group(&commands::subs::TAGGING_GROUP);
     let mut bot = Client::builder(&conf.token)
         .event_handler(Handler)
         .framework(fw)
