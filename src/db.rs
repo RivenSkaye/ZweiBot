@@ -42,6 +42,19 @@ fn get_tag_id(conn: &Connection, tag: &String, guild: u64) -> SQLRes<i64> {
     )
 }
 
+pub fn get_server_tags(conn: &Connection, guild: u64) -> SQLRes<Vec<String>> {
+    let mut prep = conn.prepare("SELECT tagname FROM servertags WHERE serverid = $1")?;
+    let mut result = prep.query(params![guild as i64])?;
+
+    let mut tags: Vec<String> = Vec::new();
+    while let Some(row) = result.next()? {
+        let mut val: String = row.get(0)?;
+        val.push_str("\n");
+        tags.push(val);
+    }
+    Ok(tags)
+}
+
 pub fn add_tag(conn: &Connection, guild: u64, tag: &String) -> SQLRes<usize> {
     conn.execute(
         "INSERT INTO servertags (serverid, tagname) VALUES ($1, $2)",
