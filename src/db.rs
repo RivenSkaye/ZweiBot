@@ -74,7 +74,7 @@ pub fn remove_tag(conn: &Connection, guild: u64, tag: &String) -> SQLRes<usize> 
 pub fn sub_to(conn: &Connection, guild: u64, tag: &String, uid: u64) -> SQLRes<usize> {
     let tag_id = get_tag_id(conn, tag, guild)?;
     conn.execute(
-        "INSERT INTO tagsubs VALUES ($1 $2)",
+        "INSERT INTO tagsubs VALUES ($1, $2)",
         params![tag_id, uid as i64],
     )
 }
@@ -85,4 +85,19 @@ pub fn unsub(conn: &Connection, guild: u64, tag: &String, uid: u64) -> SQLRes<us
         "DELETE FROM tagsubs WHERE tagid = $1 AND userid = $2",
         params![tag_id, uid as i64],
     )
+}
+
+pub fn usersubs(conn: &Connection, guild: u64, uid: u64) -> SQLRes<Vec<String>> {
+    let mut prep = conn.prepare(
+        "SELECT tagname FROM servertags, tagsubs WHERE tagsubs.userid = $1 AND tagsubs.tagid = servertags.tagid AND servertags.serverid = $2"
+    )?;
+    let mut result = prep.query(params![uid as i64, guild as i64])?;
+
+    let mut tags: Vec<String> = Vec::new();
+    while let Some(row) = result.next()? {
+        let mut val: String = row.get(0)?;
+        val.push_str("\n");
+        tags.push(val);
+    }
+    Ok(tags)
 }
