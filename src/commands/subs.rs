@@ -211,8 +211,193 @@ async fn list_tags(ctx: &Context, msg: &Message) -> CommandResult {
     }
 }
 
+#[command("sub")]
+#[only_in("guilds")]
+#[aliases("subscribe")]
+#[description = "Subscribe to one or more tags in this server."]
+async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.is_empty() {
+        return send_err(
+            ctx,
+            msg,
+            "Did you forget to add actual tags to subscribe to?",
+        )
+        .await;
+    }
+    let guild_id = msg.guild_id.unwrap().0;
+    let auth = msg.author.id.0;
+    let mut ok_list: String = String::with_capacity(args.message().len() + (args.len() * 3));
+    let mut err_list = ok_list.clone();
+    {
+        let botdata = ctx.data.read().await;
+        let conn = match botdata.get::<ZweiDbConn>() {
+            Some(conn) => conn,
+            _ => {
+                return send_err_titled(
+                    ctx,
+                    msg,
+                    "Catastrophic failure",
+                    "Could not acquire the database connection object.\nContact support if this keeps happening!"
+                ).await;
+            }
+        };
+        let dbc = conn.lock().await;
+        for tag in args.iter() {
+            let tagstr: String = tag?;
+            let res = db::sub_to(&dbc, guild_id, &tagstr, auth);
+            match res {
+                Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
+                _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
+            };
+        }
+    }
+    match ok_list.len() {
+        1.. => {
+            send_ok(
+                ctx,
+                msg,
+                "Subscribed successfully!",
+                format!("You are now subscribed to:{ok_list}"),
+            )
+            .await?;
+        }
+        _ => {
+            ();
+        }
+    };
+    return match err_list.len() {
+        1.. => {
+            send_err_titled(
+                ctx,
+                msg,
+                "Subscription failed",
+                format!("The following tags could not be found in this server:{err_list}"),
+            )
+            .await
+        }
+        _ => Ok(()),
+    };
+}
+
+#[command("unsub")]
+#[only_in("guilds")]
+#[aliases("unsubscribe")]
+#[description = "Unsubscribe from one or more tags in this server."]
+async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.is_empty() {
+        return send_err(
+            ctx,
+            msg,
+            "Did you forget to add actual tags to unsubscribe from?",
+        )
+        .await;
+    }
+    let guild_id = msg.guild_id.unwrap().0;
+    let auth = msg.author.id.0;
+    let mut ok_list: String = String::with_capacity(args.message().len() + (args.len() * 3));
+    let mut err_list = ok_list.clone();
+    {
+        let botdata = ctx.data.read().await;
+        let conn = match botdata.get::<ZweiDbConn>() {
+            Some(conn) => conn,
+            _ => {
+                return send_err_titled(
+                    ctx,
+                    msg,
+                    "Catastrophic failure",
+                    "Could not acquire the database connection object.\nContact support if this keeps happening!"
+                ).await;
+            }
+        };
+        let dbc = conn.lock().await;
+        for tag in args.iter() {
+            let tagstr: String = tag?;
+            let res = db::unsub(&dbc, guild_id, &tagstr, auth);
+            match res {
+                Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
+                _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
+            };
+        }
+    }
+    match ok_list.len() {
+        1.. => {
+            send_ok(
+                ctx,
+                msg,
+                "Unsubscribed successfully!",
+                format!("You are no longer subscribed to:{ok_list}"),
+            )
+            .await?;
+        }
+        _ => {
+            ();
+        }
+    };
+    return match err_list.len() {
+        1.. => {
+            send_err_titled(
+                ctx,
+                msg,
+                "Unsubscribing failed",
+                format!("You were not subscribed to following tags, or they could not be found in this server:{err_list}"),
+            )
+            .await
+        }
+        _ => Ok(()),
+    };
+}
+
+#[command("subs")]
+#[only_in("guilds")]
+#[aliases("subscriptions", "pongs")]
+#[description = "List all tags you're currently subscribed to."]
+async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
+    let uid = msg.author.id.0;
+    let guild_id = msg.guild_id.unwrap().0;
+    let tags;
+    {
+        let botdata = ctx.data.read().await;
+        let conn = match botdata.get::<ZweiDbConn>() {
+            Some(conn) => conn,
+            _ => {
+                return send_err_titled(
+                    ctx,
+                    msg,
+                    "Catastrophic failure",
+                    "Could not acquire the database connection object.\nContact support if this keeps happening!"
+                ).await;
+            }
+        };
+        let dbc = conn.lock().await;
+        tags = db::usersubs(&dbc, guild_id, uid)?;
+    }
+    return match tags.len() {
+        1.. => {
+            send_ok(
+                ctx,
+                msg,
+                "Your subcriptions",
+                format!(
+                    "For this server, you are currently subscribed to:\n+ {}",
+                    tags.join("+ ")
+                ),
+            )
+            .await
+        }
+        _ => {
+            send_err_titled(
+                ctx,
+                msg,
+                "No subcriptions found",
+                "You are currently not subscribed to any tags in this server.",
+            )
+            .await
+        }
+    };
+}
+
 #[group("Tagging")]
-#[commands(add_tags, remove_tags, list_tags)]
+#[commands(add_tags, remove_tags, list_tags, subscribe, unsubscribe, list_subs)]
 #[summary = "Tag subscription for easily pinging the people interested in certain subjects. Tags are case-insensitive. Provide only tags to ping subscribed users."]
 #[prefixes("tag")]
 #[help_available]
