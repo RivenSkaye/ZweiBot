@@ -66,7 +66,7 @@ pub fn remove_tag(conn: &Connection, guild: u64, tag: &String) -> SQLRes<usize> 
     let tag_id = get_tag_id(conn, tag, guild)?;
     conn.execute("DELETE FROM tagsubs WHERE tagid = $1", params![tag_id])?;
     conn.execute(
-        "DELETE FROM servertags WHERE serverid = $1 AND tagname = $1",
+        "DELETE FROM servertags WHERE serverid = $1 AND tagname = $2",
         params![guild as i64, tag],
     )
 }
