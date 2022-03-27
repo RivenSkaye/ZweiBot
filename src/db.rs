@@ -28,5 +28,48 @@ pub fn set_prefix(conn: &Connection, guild: u64, pfx: &str) -> SQLRes<usize> {
 }
 
 pub fn remove_prefix(conn: &Connection, guild: u64) -> SQLRes<usize> {
-    conn.execute("DELETE FROM prefixes WHERE server IS $1", [guild as i64])
+    conn.execute(
+        "DELETE FROM prefixes WHERE server IS $1",
+        params![guild as i64],
+    )
+}
+
+fn get_tag_id(conn: &Connection, tag: &String, guild: u64) -> SQLRes<i64> {
+    conn.query_row(
+        "SELECT tagid FROM servertags WHERE serverid = $1 AND tagname = $2",
+        params![guild as i64, tag],
+        |r| r.get(0),
+    )
+}
+
+pub fn add_tag(conn: &Connection, guild: u64, tag: &String) -> SQLRes<usize> {
+    conn.execute(
+        "INSERT INTO servertags (serverid, tagname) VALUES ($1, $2)",
+        params![guild as i64, tag],
+    )
+}
+
+pub fn remove_tag(conn: &Connection, guild: u64, tag: &String) -> SQLRes<usize> {
+    let tag_id = get_tag_id(conn, tag, guild)?;
+    conn.execute("DELETE FROM tagsubs WHERE tagid = $1", params![tag_id])?;
+    conn.execute(
+        "DELETE FROM servertags WHERE serverid = $1 AND tagname = $1",
+        params![guild as i64, tag],
+    )
+}
+
+pub fn sub_to(conn: &Connection, guild: u64, tag: &String, uid: u64) -> SQLRes<usize> {
+    let tag_id = get_tag_id(conn, tag, guild)?;
+    conn.execute(
+        "INSERT INTO tagsubs VALUES ($1 $2)",
+        params![tag_id, uid as i64],
+    )
+}
+
+pub fn unsub(conn: &Connection, guild: u64, tag: &String, uid: u64) -> SQLRes<usize> {
+    let tag_id = get_tag_id(conn, tag, guild)?;
+    conn.execute(
+        "DELETE FROM tagsubs WHERE tagid = $1 AND userid = $2",
+        params![tag_id, uid as i64],
+    )
 }
