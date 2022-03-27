@@ -41,11 +41,9 @@ fn get_data_dir() -> PathBuf {
         .unwrap()
         .parent()
         .unwrap()
-        .join("data")
-        .canonicalize()
-        .unwrap();
+        .join("data");
     if preferred.exists() {
-        return preferred;
+        return preferred.canonicalize().unwrap();
     }
 
     // cwd relative
