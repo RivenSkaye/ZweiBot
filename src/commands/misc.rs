@@ -110,24 +110,32 @@ async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[description = "Check the prefix for the current context"]
+#[help_available(false)]
 async fn get(ctx: &Context, msg: &Message) -> CommandResult {
     send_ok(
         ctx,
         msg,
         "Prefix",
-        format!("I'm listening for {:} in here.", get_prefix(msg, ctx).await),
+        format!(
+            "I'm listening for {} in this server.",
+            get_prefix(msg, ctx).await
+        ),
     )
     .await
 }
 
 #[command]
-#[description = "Change the guild prefix"]
-#[min_args(1)]
+#[description = "Change the guild prefix. Internally defers the command to get the current prefix if no arguments are given."]
+#[min_args(0)]
 #[max_args(1)]
 #[only_in("guilds")]
 #[required_permissions("MANAGE_GUILD")]
 #[example = "z;"]
+#[aliases("change")]
 async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    if args.is_empty() {
+        return get(ctx, msg, args.clone()).await;
+    }
     let guild: u64 = msg.guild_id.unwrap().0;
     let pfx = args.rest();
     {
@@ -173,7 +181,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 }
 
 #[command]
-#[description = "Clear the guild prefix"]
+#[description = "Clear the guild prefix and reset it to the bot's default."]
 #[only_in("guilds")]
 #[required_permissions("MANAGE_GUILD")]
 async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
@@ -230,8 +238,8 @@ struct Misc;
 
 #[group("Prefix")]
 #[commands(get, set, clear)]
-#[summary = "Get or set the prefix"]
+#[summary = "Change the current prefix, or display it if no extra arguments are given."]
 #[prefixes("prefix")]
-#[default_command(get)]
+#[default_command(set)]
 #[help_available]
 struct Prefix;
