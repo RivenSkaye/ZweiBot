@@ -1,6 +1,9 @@
 pub use rusqlite::{params, Connection, Result as SQLRes};
 use serenity::prelude::{Mutex, TypeMapKey};
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 pub struct ZweiDbConn;
 impl TypeMapKey for ZweiDbConn {
@@ -55,6 +58,16 @@ pub fn get_server_tags(conn: &Connection, guild: u64) -> SQLRes<Vec<String>> {
     Ok(tags)
 }
 
+pub fn are_tags_in_server(conn: &Connection, guild: u64, tags: &HashSet<String>) -> SQLRes<bool> {
+    let tagvec: Vec<String> = tags.iter().map(|s| String::from(s)).collect();
+    let res: isize = conn.query_row_and_then(
+        "SELECT COUNT(SELECT tagid FROM servertags WHERE serverid = $1 AND tagname IN ($2))",
+        params![guild as i64, tagvec.join(", ")],
+        |row| row.get(0),
+    )?;
+    Ok(res > 0)
+}
+
 pub fn add_tag(conn: &Connection, guild: u64, tag: &String) -> SQLRes<usize> {
     conn.execute(
         "INSERT INTO servertags (serverid, tagname) VALUES ($1, $2)",
@@ -100,4 +113,18 @@ pub fn usersubs(conn: &Connection, guild: u64, uid: u64) -> SQLRes<Vec<String>> 
         tags.push(val);
     }
     Ok(tags)
+}
+
+pub fn get_subbers(conn: &Connection, guild: u64, tag: &String) -> SQLRes<Vec<u64>> {
+    let mut prep = conn.prepare(
+        "SELECT userid FROM tagsubs WHERE tagid = (SELECT tagid FROM servertags WHERE serverid = $1 AND tagname = $2)"
+    )?;
+    let mut result = prep.query(params![guild as i64, tag])?;
+
+    let mut users: Vec<u64> = Vec::new();
+    while let Some(row) = result.next()? {
+        let user: i64 = row.get(0)?;
+        users.push(user as u64);
+    }
+    Ok(users)
 }
