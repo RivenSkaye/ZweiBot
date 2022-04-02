@@ -6,6 +6,7 @@ use serenity::{
     model::prelude::*,
     prelude::*,
 };
+use std::collections::HashSet;
 
 use crate::{
     db::{self, ZweiDbConn},
@@ -396,9 +397,132 @@ async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
     };
 }
 
+#[command("tag")]
+#[only_in("guilds")]
+#[aliases("ping")]
+#[description = "Notify all subscribed users of a relevant post."]
+async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    if args.is_empty() {
+        return send_err_titled(
+            ctx,
+            msg,
+            "No tags",
+            "I need at least one tag to notify people for.",
+        )
+        .await;
+    }
+    let tags: HashSet<String> = args
+        .message()
+        .replace(", ", " ")
+        .split(" ")
+        .map(|a| String::from(a))
+        .collect();
+    let guild_id = msg.guild_id.unwrap().0;
+    let mut users: HashSet<u64> = HashSet::new();
+    let mut failed: Vec<String> = Vec::new();
+    let mut tagmsg = String::new();
+    {
+        let botdata = ctx.data.read().await;
+        let conn = match botdata.get::<ZweiDbConn>() {
+            Some(conn) => conn,
+            _ => {
+                return send_err_titled(
+                    ctx,
+                    msg,
+                    "Catastrophic failure",
+                    "Could not acquire the database connection object.\nContact support if this keeps happening!"
+                ).await;
+            }
+        };
+        let dbc = conn.lock().await;
+        if !db::are_tags_in_server(&dbc, guild_id, &tags)? {
+            return send_err_titled(
+                ctx,
+                msg,
+                "No matching tags found!",
+                "None of what you just said makes any sense to me. Try checking `tag list` for what's available."
+            ).await;
+        }
+        for tag in tags {
+            if tag == "" || tag == " " {
+                continue;
+            }
+            let subs = db::get_subbers(&dbc, guild_id, &tag);
+            match subs {
+                Ok(s) => {
+                    users.extend(s);
+                    tagmsg.push_str(format!("{}, ", &tag).as_str());
+                }
+                Err(_) => failed.push(tag),
+            };
+        }
+    }
+    if failed.len() > 0 {
+        send_err_titled(
+            ctx,
+            msg,
+            "Tags not found",
+            format!("The following tags do not exist: {}", failed.join("\n+ ")),
+        )
+        .await?;
+    }
+    if users.len() == 0 {
+        return send_err_titled(
+            ctx,
+            msg,
+            "No users subscribed",
+            "One or more tags exist, but no users in this server are subscribed to any of them.",
+        )
+        .await;
+    } else {
+        let mut paginated: Vec<String> = Vec::new();
+        let initial = tagmsg.chars().count();
+        let mut charcount: usize = initial;
+        let mut pingmsg = String::with_capacity(2000);
+        pingmsg.push_str(&tagmsg);
+        for user in users {
+            // A Discord ID is 18 chars long. A user ping (<&ID>) is 21
+            // Message limit is 2k. So 2k - 21 = 1979.
+            // SPACES ARE FOR THE WEAK!
+            // so make sure we can actually fit those 21 characters in the message
+            // if not, push a clone of it into the vec up there.
+            // Then send all messages.
+            if charcount > 1979 {
+                paginated.push(pingmsg.clone());
+                pingmsg.clear();
+                pingmsg.push_str(&tagmsg);
+                charcount = initial;
+            }
+            pingmsg.push_str(format!("<@{user}>").as_str());
+            charcount += 21;
+        }
+        paginated.push(pingmsg);
+        for page in paginated {
+            let sent = msg
+                .channel_id
+                .send_message(ctx, |mes| mes.content(page))
+                .await;
+            match sent {
+                Err(s) => println!("{s}"),
+                Ok(_) => (),
+            };
+        }
+    }
+    Ok(())
+}
+
 #[group("Tagging")]
-#[commands(add_tags, remove_tags, list_tags, subscribe, unsubscribe, list_subs)]
+#[commands(
+    add_tags,
+    remove_tags,
+    list_tags,
+    subscribe,
+    unsubscribe,
+    list_subs,
+    ping_all_subbers
+)]
 #[summary = "Tag subscription for easily pinging the people interested in certain subjects. Tags are case-insensitive. Provide only tags to ping subscribed users."]
 #[prefixes("tag")]
 #[help_available]
+#[default_command(ping_all_subbers)]
 struct Tagging;
