@@ -47,13 +47,9 @@ fn get_data_dir() -> PathBuf {
     }
 
     // cwd relative
-    let fallback = std::env::current_dir()
-        .unwrap()
-        .join("data")
-        .canonicalize()
-        .unwrap();
+    let fallback = std::env::current_dir().unwrap().join("data");
     if fallback.exists() {
-        return fallback;
+        return fallback.canonicalize().unwrap();
     }
 
     if fs::create_dir_all(&preferred).is_ok() {
