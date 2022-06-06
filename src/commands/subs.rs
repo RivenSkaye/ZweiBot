@@ -14,9 +14,11 @@ use crate::{
 };
 
 #[command("add")]
+#[aliases("create", "+")]
 #[only_in("guilds")]
 #[required_permissions("MANAGE_GUILD")]
 #[description = "Adds one or more tags for people in this server to subscribe to. Tags are always a single word, use dashes or underscores to avoid naming conflicts."]
+#[help_available(true)]
 async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         return send_err(ctx, msg, "I can't add tags without the actual tag to add.").await;
@@ -101,6 +103,7 @@ async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 #[only_in("guilds")]
 #[required_permissions("MANAGE_GUILD")]
 #[description = "Removes tags saved for this server."]
+#[help_available(true)]
 async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         return send_err(
@@ -185,6 +188,7 @@ async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
 #[min_args(0)]
 #[max_args(0)]
 #[description = "Lists all tags available for subscribing to in this server."]
+#[help_available(true)]
 async fn list_tags(ctx: &Context, msg: &Message) -> CommandResult {
     let guild_id = msg.guild_id.unwrap().0;
     {
@@ -216,6 +220,7 @@ async fn list_tags(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in("guilds")]
 #[aliases("subscribe")]
 #[description = "Subscribe to one or more tags in this server."]
+#[help_available(true)]
 async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         return send_err(
@@ -284,6 +289,7 @@ async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 #[only_in("guilds")]
 #[aliases("unsubscribe")]
 #[description = "Unsubscribe from one or more tags in this server."]
+#[help_available(true)]
 async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         return send_err(
@@ -352,6 +358,7 @@ async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
 #[only_in("guilds")]
 #[aliases("subscriptions", "pongs")]
 #[description = "List all tags you're currently subscribed to."]
+#[help_available(true)]
 async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
     let uid = msg.author.id.0;
     let guild_id = msg.guild_id.unwrap().0;
@@ -397,9 +404,8 @@ async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
     };
 }
 
-#[command("tag")]
+#[command("ping")]
 #[only_in("guilds")]
-#[aliases("ping")]
 #[description = "Notify all subscribed users of a relevant post."]
 async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
@@ -411,11 +417,22 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
         )
         .await;
     }
-    let tags: HashSet<String> = args
+    if args.message().chars().count() > 750 {
+        return send_err_titled(
+            ctx,
+            msg,
+            "Too many tags!",
+            "Please limit the used tags to a maximum of 750 characters.\nThis isn't even healthy anymore!"
+        ).await;
+    }
+    let tags: Vec<String> = args
         .message()
         .replace(", ", " ")
         .split(" ")
         .map(|a| String::from(a))
+        .collect::<HashSet<String>>()
+        .iter()
+        .map(|s| s.to_owned())
         .collect();
     let guild_id = msg.guild_id.unwrap().0;
     let mut users: HashSet<u64> = HashSet::new();
@@ -435,7 +452,15 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
             }
         };
         let dbc = conn.lock().await;
-        if !db::are_tags_in_server(&dbc, guild_id, &tags)? {
+        let tagcount = db::are_tags_in_server(&dbc, guild_id, &tags);
+        let valid = match tagcount {
+            Ok(c) => c > 0,
+            Err(e) => {
+                send_err(ctx, msg, format!("{e}")).await?;
+                false
+            }
+        };
+        if !valid {
             return send_err_titled(
                 ctx,
                 msg,
@@ -443,7 +468,7 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
                 "None of what you just said makes any sense to me. Try checking `tag list` for what's available."
             ).await;
         }
-        for tag in tags {
+        for tag in &tags {
             if tag == "" || tag == " " {
                 continue;
             }
@@ -451,11 +476,11 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
             match subs {
                 Ok(s) => {
                     users.extend(s);
-                    tagmsg.push_str(format!("{}, ", &tag).as_str());
                 }
-                Err(_) => failed.push(tag),
+                Err(_) => failed.push(tag.clone()),
             };
         }
+        tagmsg.push_str(tags.join(", ").as_str());
     }
     if failed.len() > 0 {
         send_err_titled(
@@ -493,25 +518,20 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
                 pingmsg.push_str(&tagmsg);
                 charcount = initial;
             }
-            pingmsg.push_str(format!("<@{user}>").as_str());
+            pingmsg.push_str(format!(" <@{user}>").as_str());
             charcount += 21;
         }
         paginated.push(pingmsg);
         for page in paginated {
-            let sent = msg
-                .channel_id
+            msg.channel_id
                 .send_message(ctx, |mes| mes.content(page))
-                .await;
-            match sent {
-                Err(s) => println!("{s}"),
-                Ok(_) => (),
-            };
+                .await?;
         }
     }
     Ok(())
 }
 
-#[group("Tagging")]
+#[group("Tag")]
 #[commands(
     add_tags,
     remove_tags,
@@ -523,6 +543,6 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
 )]
 #[summary = "Tag subscription for easily pinging the people interested in certain subjects. Tags are case-insensitive. Provide only tags to ping subscribed users."]
 #[prefixes("tag")]
-#[help_available]
+#[help_available(true)]
 #[default_command(ping_all_subbers)]
-struct Tagging;
+struct Tag;

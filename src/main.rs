@@ -287,7 +287,7 @@ async fn main() {
         .group(&commands::modtools::MODTOOLS_GROUP)
         .group(&commands::misc::MISC_GROUP)
         .group(&commands::misc::PREFIX_GROUP)
-        .group(&commands::subs::TAGGING_GROUP);
+        .group(&commands::subs::TAG_GROUP);
     let mut bot = Client::builder(&conf.token)
         .event_handler(Handler)
         .framework(fw)
