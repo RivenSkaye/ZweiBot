@@ -1,9 +1,6 @@
 pub use rusqlite::{params, Connection, Result as SQLRes};
 use serenity::prelude::{Mutex, TypeMapKey};
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 pub struct ZweiDbConn;
 impl TypeMapKey for ZweiDbConn {
@@ -58,14 +55,16 @@ pub fn get_server_tags(conn: &Connection, guild: u64) -> SQLRes<Vec<String>> {
     Ok(tags)
 }
 
-pub fn are_tags_in_server(conn: &Connection, guild: u64, tags: &HashSet<String>) -> SQLRes<bool> {
-    let tagvec: Vec<String> = tags.iter().map(|s| String::from(s)).collect();
-    let res: isize = conn.query_row_and_then(
-        "SELECT COUNT(SELECT tagid FROM servertags WHERE serverid = $1 AND tagname IN ($2))",
-        params![guild as i64, tagvec.join(", ")],
+pub fn are_tags_in_server(conn: &Connection, guild: u64, tagvec: &Vec<String>) -> SQLRes<isize> {
+    conn.query_row(
+        format!(
+            "SELECT COUNT(tagid) FROM servertags WHERE serverid = $1 AND tagname IN (\"{}\")",
+            tagvec.join("\", \"")
+        )
+        .as_str(),
+        params![guild as i64],
         |row| row.get(0),
-    )?;
-    Ok(res > 0)
+    )
 }
 
 pub fn add_tag(conn: &Connection, guild: u64, tag: &String) -> SQLRes<usize> {
