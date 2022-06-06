@@ -29,7 +29,7 @@ codegen-units = 96
 opt-level = 2
 codegen-units = 96
 
-[profile.debug]
+[profile.dev]
 incremental = true
 
 [features]
