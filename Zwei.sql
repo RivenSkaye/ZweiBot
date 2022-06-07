@@ -20,3 +20,10 @@ CREATE TABLE IF NOT EXISTS 'tagsubs'(
     UNIQUE('tagid', 'userid') ON CONFLICT FAIL,
     FOREIGN KEY ('tagid') REFERENCES 'servertags'('tagid')
 );
+
+CREATE TABLE IF NOT EXISTS 'warnings'(
+    'warnid' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    'serverid' INTEGER NOT NULL,
+    'userid' INTEGER NOT NULL,
+    'message' LONGTEXT NOT NULL DEFAULT ''
+);
