@@ -127,3 +127,32 @@ pub fn get_subbers(conn: &Connection, guild: u64, tag: &String) -> SQLRes<Vec<u6
     }
     Ok(users)
 }
+
+pub fn warncount(conn: &Connection, guild: u64, user: u64) -> SQLRes<isize> {
+    conn.query_row(
+        "SELECT COUNT(*) FROM warnings WHERE serverid = $1 AND userid = $2",
+        params![guild as i64, user as i64],
+        |row| row.get(0),
+    )
+}
+
+pub fn warn(conn: &Connection, guild: u64, user: u64, message: &str) -> SQLRes<isize> {
+    conn.execute(
+        "INSERT INTO warnings (serverid, userid, message) VALUES ($1, $2, $3)",
+        params![guild as i64, user as i64, message],
+    )?;
+    warncount(conn, guild, user)
+}
+
+pub fn get_warnings(conn: &Connection, guild: u64, user: u64) -> SQLRes<Vec<String>> {
+    let mut prep = conn.prepare(
+        "SELECT message FROM warnings WHERE serverid = $1 AND userid = $2 ORDER BY warnid",
+    )?;
+    let mut result = prep.query(params![guild as i64, user as i64])?;
+
+    let mut warnings: Vec<String> = Vec::new();
+    while let Some(row) = result.next()? {
+        warnings.push(row.get(0)?);
+    }
+    Ok(warnings)
+}
