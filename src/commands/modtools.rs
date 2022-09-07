@@ -285,8 +285,35 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     .await;
 }
 
+#[command]
+async fn warn(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    args.trimmed();
+    let mem_id = args.parse::<UserId>().unwrap_or_default();
+    args.advance();
+
+    if mem_id.0 == 0 {
+        return send_err_titled(
+            ctx,
+            msg,
+            "No target provided!",
+            "Please give me a user mention or an ID to warn.",
+        )
+        .await;
+    } else if mem_id.0 == msg.guild(ctx).await.unwrap().owner_id.0 {
+        return send_err_titled(
+            ctx,
+            msg,
+            "That's not useful!",
+            "Warning the owner has no use, even if I'd love to.",
+        )
+        .await;
+    }
+
+    Ok(())
+}
+
 #[group("Modtools")]
-#[commands(purge, kick, ban)]
+#[commands(purge, kick, ban, warn)]
 #[summary = "Commands for moderators and admins of a server."]
 #[only_in("guilds")]
 struct ModTools;
