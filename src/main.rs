@@ -319,5 +319,4 @@ async fn main() {
         println!("Zwei did not exit cleanly!\n{:}", death);
         bot.shard_manager.lock().await.shutdown_all().await;
     }
-    // Perform exit logic here. Save config changes, mangle pending DB ops, etc
 }
