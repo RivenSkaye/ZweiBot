@@ -97,7 +97,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             "Please give me a user mention or an ID to kick.",
         )
         .await;
-    } else if mem_id.0 == msg.guild(ctx).await.unwrap().owner_id.0 {
+    } else if mem_id.0 == msg.guild(ctx).unwrap().owner_id.0 {
         return send_err_titled(
             ctx,
             msg,
@@ -108,24 +108,20 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     }
     let memrole = msg
         .guild(ctx)
-        .await
         .unwrap()
         .member(ctx, u64::try_from(mem_id.0)?)
         .await?
         .highest_role_info(ctx)
-        .await
         .unwrap();
     let botdata = ctx.data.read().await;
     if let Some(data) = botdata.get::<ZweiData>() {
         let self_id = u64::try_from(*data.get("id").unwrap())?;
         let selfrole = msg
             .guild(ctx)
-            .await
             .unwrap()
             .member(ctx, self_id)
             .await?
             .highest_role_info(ctx)
-            .await
             .unwrap();
 
         if self_id == mem_id.0 {
@@ -192,7 +188,7 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             "Please give me a user mention or an ID to ban.",
         )
         .await;
-    } else if mem_id.0 == msg.guild(ctx).await.unwrap().owner_id.0 {
+    } else if mem_id.0 == msg.guild(ctx).unwrap().owner_id.0 {
         return send_err_titled(
             ctx,
             msg,
@@ -203,24 +199,20 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     }
     let memrole = msg
         .guild(ctx)
-        .await
         .unwrap()
         .member(ctx, mem_id.0)
         .await?
         .highest_role_info(ctx)
-        .await
         .unwrap();
     let botdata = ctx.data.read().await;
     if let Some(data) = botdata.get::<ZweiData>() {
         let self_id = u64::try_from(*data.get("id").unwrap())?;
         let selfrole = msg
             .guild(ctx)
-            .await
             .unwrap()
             .member(ctx, self_id)
             .await?
             .highest_role_info(ctx)
-            .await
             .unwrap();
 
         if self_id == mem_id.0 {
@@ -299,7 +291,7 @@ async fn warn(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             "Please give me a user mention or an ID to warn.",
         )
         .await;
-    } else if mem_id.0 == msg.guild(ctx).await.unwrap().owner_id.0 {
+    } else if mem_id.0 == msg.guild(ctx).unwrap().owner_id.0 {
         return send_err_titled(
             ctx,
             msg,
