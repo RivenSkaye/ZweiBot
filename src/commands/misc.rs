@@ -30,11 +30,22 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let botdata = ctx.data.read().await;
 
     if let Some(manager) = botdata.get::<ShardManagerContainer>() {
+        let timetxt = if time >= 60 {
+            let secs = time % 60;
+            let mins = (time - secs) / 60;
+            format!(
+                "{mins} minute{} and {secs} second{}",
+                if mins != 1 { "s" } else { "" },
+                if secs != 1 { "s" } else { "" }
+            )
+        } else {
+            format!("{time} second{}", if time != 1 { "s" } else { "" })
+        };
         send_ok(
             ctx,
             msg,
             cmd_name,
-            format!("I'm taking a nap in {time} seconds."),
+            format!("I'm taking a nap in {timetxt}."),
         )
         .await?;
         sleep(Duration::from_secs(time)).await;
