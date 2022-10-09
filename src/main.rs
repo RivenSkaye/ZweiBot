@@ -1,10 +1,7 @@
 use chrono::Utc;
 use serenity::{
     async_trait,
-    client::{
-        bridge::gateway::{GatewayIntents, ShardManager},
-        Client,
-    },
+    client::{bridge::gateway::ShardManager, Client},
     framework,
     framework::standard::{macros::help, Args, CommandGroup, CommandResult, HelpOptions},
     http::Http,
@@ -71,7 +68,7 @@ impl EventHandler for Handler {
 /// _display name_ for the context first, but falls back to the normal
 /// username if a nickname isn't set or the context is not a guild.
 pub async fn get_name(msg: &Message, ctx: &Context, mem: UserId) -> SerenityResult<String> {
-    let guild = msg.guild(ctx).await;
+    let guild = msg.guild(ctx);
     if let Some(g) = guild {
         let gmem = g.member(ctx, mem).await?;
         return Ok(gmem.display_name().into_owned());
@@ -83,11 +80,7 @@ pub async fn get_name(msg: &Message, ctx: &Context, mem: UserId) -> SerenityResu
 
 /// Function to resolve the textual name for the guild from the message.
 pub async fn get_guildname(msg: &Message, ctx: &Context) -> String {
-    msg.guild_id
-        .unwrap()
-        .name(ctx)
-        .await
-        .unwrap_or(String::from(""))
+    msg.guild_id.unwrap().name(ctx).unwrap_or(String::from(""))
 }
 
 /// Function to get the prefix for the current context.
@@ -242,7 +235,7 @@ async fn zwei_help(
     groups: &[&'static CommandGroup],
     owners: HashSet<UserId>,
 ) -> CommandResult {
-    framework::standard::help_commands::with_embeds(ctx, msg, args, opts, groups, owners).await;
+    framework::standard::help_commands::with_embeds(ctx, msg, args, opts, groups, owners).await?;
     Ok(())
 }
 
@@ -256,7 +249,7 @@ async fn prefix(ctx: &Context, msg: &Message) -> Option<String> {
 #[tokio::main]
 async fn main() {
     let conf = &zwei_conf::CONF;
-    let http = Http::new_with_token(&conf.token);
+    let http = Http::new(&conf.token);
     let owners = match http.get_current_application_info().await {
         Ok(info) => {
             let mut owners = HashSet::<UserId>::new();
@@ -288,10 +281,9 @@ async fn main() {
         .group(&commands::misc::MISC_GROUP)
         .group(&commands::misc::PREFIX_GROUP)
         .group(&commands::subs::TAG_GROUP);
-    let mut bot = Client::builder(&conf.token)
+    let mut bot = Client::builder(&conf.token, GatewayIntents::all())
         .event_handler(Handler)
         .framework(fw)
-        .intents(GatewayIntents::all())
         .await
         .expect("Zwei is feeling special today");
     let arcsqlite = Arc::new(Mutex::new(
