@@ -15,8 +15,11 @@ use std::{
     sync::Arc,
 };
 
-mod commands;
-mod db;
+extern crate log;
+use env_logger;
+
+//mod commands;
+mod dbx;
 mod zwei_conf;
 
 pub struct ShardManagerContainer;
@@ -39,7 +42,7 @@ impl TypeMapKey for ZweiOwners {
     type Value = HashSet<UserId>;
 }
 
-use db::ZweiDbConn;
+use dbx::ZweiDbConn;
 
 struct Handler;
 #[async_trait]
@@ -266,6 +269,10 @@ async fn main() {
             &conf.token, why
         ),
     };
+    let logenv = env_logger::Env::default()
+        .filter_or("ZWEI_LOG_LEVEL", &conf.loglevel)
+        .write_style_or("ZWEI_LOG_STYLE", "auto");
+    env_logger::init_from_env(logenv);
     let self_id = http.get_current_user().await.unwrap().id;
     let fw = framework::standard::StandardFramework::new()
         .configure(|c| {
@@ -276,20 +283,25 @@ async fn main() {
                 .owners(owners.clone())
                 .case_insensitivity(true)
         })
-        .help(&ZWEI_HELP)
-        .group(&commands::modtools::MODTOOLS_GROUP)
-        .group(&commands::misc::MISC_GROUP)
-        .group(&commands::misc::PREFIX_GROUP)
-        .group(&commands::subs::TAG_GROUP);
+        .help(&ZWEI_HELP);
+    //.group(&commands::modtools::MODTOOLS_GROUP)
+    //.group(&commands::misc::MISC_GROUP)
+    //.group(&commands::misc::PREFIX_GROUP)
+    //.group(&commands::subs::TAG_GROUP);
     let mut bot = Client::builder(&conf.token, GatewayIntents::all())
         .event_handler(Handler)
         .framework(fw)
         .await
         .expect("Zwei is feeling special today");
-    let arcsqlite = Arc::new(Mutex::new(
-        rusqlite::Connection::open(zwei_conf::DATADIR.join(&conf.database))
-            .expect("Can't open the database!"),
-    ));
+    let dbpool = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect_with(
+            sqlx::sqlite::SqliteConnectOptions::new()
+                .filename(zwei_conf::DATADIR.join(&conf.database))
+                .create_if_missing(true),
+        )
+        .await
+        .expect("Could not find a database to mangle!");
     {
         let mut data = bot.data.write().await;
         data.insert::<ShardManagerContainer>(bot.shard_manager.clone());
@@ -298,14 +310,8 @@ async fn main() {
         zd.insert("id".to_string(), i64::from(self_id));
         data.insert::<ZweiData>(zd);
         data.insert::<ZweiOwners>(owners.clone());
-        data.insert::<ZweiDbConn>(arcsqlite);
-        data.insert::<ZweiPrefixes>(
-            db::get_all_prefixes(
-                &rusqlite::Connection::open(zwei_conf::DATADIR.join(&conf.database))
-                    .expect("Can't open the database!"),
-            )
-            .unwrap(),
-        )
+        data.insert::<ZweiPrefixes>(dbx::get_all_prefixes(dbpool.acquire().await.unwrap()).await);
+        data.insert::<ZweiDbConn>(dbpool);
     }
     let shard_manager = bot.shard_manager.clone();
     tokio::spawn(async move {
