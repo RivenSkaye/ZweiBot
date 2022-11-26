@@ -28,3 +28,6 @@ debug/
 **/*.rs.bk
 *.pdb
 Cargo.lock
+
+# This is only for SQLx config. #
+.env
