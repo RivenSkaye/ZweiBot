@@ -18,6 +18,12 @@ pub struct Conf {
     pub(crate) err_color: String,
     #[serde(default = "default_ok_color")]
     pub(crate) ok_color: String,
+    #[serde(default = "default_loglevel")]
+    pub(crate) loglevel: String,
+}
+
+fn default_loglevel() -> String {
+    "warn".to_owned()
 }
 
 fn default_err_color() -> String {
