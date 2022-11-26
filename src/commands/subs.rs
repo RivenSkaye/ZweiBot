@@ -9,7 +9,7 @@ use serenity::{
 use std::collections::HashSet;
 
 use crate::{
-    db::{self, ZweiDbConn},
+    dbx::{self, ZweiDbConn},
     send_err, send_err_titled, send_ok,
 };
 
@@ -43,7 +43,7 @@ async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         let dbc = conn.lock().await;
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = db::add_tag(&dbc, guild_id, &tagstr.to_lowercase());
+            let res = dbx::add_tag(&dbc, guild_id, &tagstr.to_lowercase());
             match res {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
                 _ => {
@@ -132,7 +132,7 @@ async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         let dbc = conn.lock().await;
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = db::remove_tag(&dbc, guild_id, &tagstr.to_lowercase());
+            let res = dbx::remove_tag(&dbc, guild_id, &tagstr.to_lowercase());
             match res {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
                 _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
@@ -205,7 +205,7 @@ async fn list_tags(ctx: &Context, msg: &Message) -> CommandResult {
             }
         };
         let dbc = conn.lock().await;
-        let tags = db::get_server_tags(&dbc, guild_id)?;
+        let tags = dbx::get_server_tags(&dbc, guild_id)?;
         send_ok(
             ctx,
             msg,
@@ -250,7 +250,7 @@ async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         let dbc = conn.lock().await;
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = db::sub_to(&dbc, guild_id, &tagstr, auth);
+            let res = dbx::sub_to(&dbc, guild_id, &tagstr, auth);
             match res {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
                 _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
@@ -319,7 +319,7 @@ async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         let dbc = conn.lock().await;
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = db::unsub(&dbc, guild_id, &tagstr, auth);
+            let res = dbx::unsub(&dbc, guild_id, &tagstr, auth);
             match res {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
                 _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
@@ -377,7 +377,7 @@ async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
             }
         };
         let dbc = conn.lock().await;
-        tags = db::usersubs(&dbc, guild_id, uid)?;
+        tags = dbx::usersubs(&dbc, guild_id, uid)?;
     }
     return match tags.len() {
         1.. => {
@@ -452,7 +452,7 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
             }
         };
         let dbc = conn.lock().await;
-        let tagcount = db::are_tags_in_server(&dbc, guild_id, &tags);
+        let tagcount = dbx::are_tags_in_server(&dbc, guild_id, &tags);
         let valid = match tagcount {
             Ok(c) => c > 0,
             Err(e) => {
@@ -472,7 +472,7 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
             if tag == "" || tag == " " {
                 continue;
             }
-            let subs = db::get_subbers(&dbc, guild_id, &tag);
+            let subs = dbx::get_subbers(&dbc, guild_id, &tag);
             match subs {
                 Ok(s) => {
                     users.extend(s);

@@ -10,7 +10,7 @@ use serenity::{
 use tokio::time::{sleep, Duration};
 
 use crate::{
-    db, get_name, get_prefix, send_err, send_err_titled, send_ok, ShardManagerContainer, ZweiData,
+    dbx, get_name, get_prefix, send_err, send_err_titled, send_ok, ShardManagerContainer, ZweiData,
     ZweiDbConn, ZweiOwners, ZweiPrefixes,
 };
 
@@ -160,7 +160,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             }
         };
         let dbc = conn.lock().await;
-        let res = db::set_prefix(&dbc, guild, pfx)?;
+        let res = dbx::set_prefix(&dbc, guild, pfx)?;
         match res {
             1.. => (),
             _ => {
@@ -201,7 +201,7 @@ async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
         let botdata = ctx.data.read().await;
         if let Some(conn) = botdata.get::<ZweiDbConn>() {
             let dbc = conn.lock().await;
-            let res = db::remove_prefix(&dbc, guild)?;
+            let res = dbx::remove_prefix(&dbc, guild)?;
             match res {
                 1 => (),
                 0 => {
