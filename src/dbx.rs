@@ -81,8 +81,9 @@ pub async fn get_subbers(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<Vec
 
 pub async fn filter_tags(conn: &Pool, guild: u64, tagvec: Vec<String>) -> ZweiDbRes<Vec<String>> {
     get_server_tags(conn, guild).await.map(|tags| {
-        tags.iter()
-            .filter(|t| tagvec.contains(t))
+        tagvec
+            .iter()
+            .filter(|t| tags.contains(t))
             .cloned()
             .collect()
     })
