@@ -65,24 +65,43 @@ pub async fn remove_prefix(conn: &Pool, guild: u64) -> ZweiDbRes<u64> {
 
 pub async fn get_tag_id(conn: &Pool, tag: &String, guild: u64) -> ZweiDbRes<i64> {
     let g = guild as i64;
-    let res = query!(
+    query!(
         "SELECT `tagid` FROM `servertags` WHERE `serverid` = ? AND `tagname` = ?",
         g,
         tag
     )
     .fetch_one(conn)
-    .await?
-    .tagid;
-    Ok(res)
+    .await
+    .map(|r| r.tagid)
 }
 
 pub async fn get_server_tags(conn: &Pool, guild: u64) -> ZweiDbRes<Vec<String>> {
     let g = guild as i64;
-    let tags = query!("SELECT `tagname` FROM `servertags` WHERE `serverid` = ?", g)
+    query!("SELECT `tagname` FROM `servertags` WHERE `serverid` = ?", g)
         .fetch_all(conn)
-        .await?
-        .iter()
-        .map(|row| row.tagname.to_owned())
-        .collect();
-    Ok(tags)
+        .await
+        .map(|r| r.iter().map(|row| row.tagname.to_owned()).collect())
+}
+
+pub async fn get_subbers(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<Vec<u64>> {
+    let g = guild as i64;
+    query!("SELECT `userid` FROM `tagsubs` WHERE `tagid` = (SELECT `tagid` FROM `servertags` WHERE `serverid` = ? AND `tagname` = ?)", g, tag)
+    .fetch_all(conn)
+    .await
+    .map(|ids|ids.iter().map(|id| id.userid as u64).collect())
+}
+
+pub async fn filter_tags(conn: &Pool, guild: u64, tagvec: Vec<String>) -> ZweiDbRes<Vec<String>> {
+    let g = guild as i64;
+    get_server_tags(conn, guild).await.map(|tags| {
+        tags.iter()
+            .filter_map(|tag| {
+                if tagvec.contains(tag) {
+                    Some(tag.to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    })
 }
