@@ -63,18 +63,6 @@ pub async fn remove_prefix(conn: &Pool, guild: u64) -> ZweiDbRes<u64> {
     )
 }
 
-pub async fn get_tag_id(conn: &Pool, tag: &String, guild: u64) -> ZweiDbRes<i64> {
-    let g = guild as i64;
-    query!(
-        "SELECT `tagid` FROM `servertags` WHERE `serverid` = ? AND `tagname` = ?",
-        g,
-        tag
-    )
-    .fetch_one(conn)
-    .await
-    .map(|r| r.tagid)
-}
-
 pub async fn get_server_tags(conn: &Pool, guild: u64) -> ZweiDbRes<Vec<String>> {
     let g = guild as i64;
     query!("SELECT `tagname` FROM `servertags` WHERE `serverid` = ?", g)
@@ -92,16 +80,10 @@ pub async fn get_subbers(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<Vec
 }
 
 pub async fn filter_tags(conn: &Pool, guild: u64, tagvec: Vec<String>) -> ZweiDbRes<Vec<String>> {
-    let g = guild as i64;
     get_server_tags(conn, guild).await.map(|tags| {
         tags.iter()
-            .filter_map(|tag| {
-                if tagvec.contains(tag) {
-                    Some(tag.to_owned())
-                } else {
-                    None
-                }
-            })
+            .filter(|t| tagvec.contains(t))
+            .cloned()
             .collect()
     })
 }
