@@ -27,6 +27,21 @@ pub async fn get_all_prefixes(mut conn: Connection<Sqlite>) -> HashMap<u64, Stri
         .collect()
 }
 
+/// # rowcount!
+/// Small macro that expands to executing a query, checking the rowcount and handling any errors.
+/// The two main points for this code were learning macro basics and not repeating the same
+/// check _every time_ I write a query.
+///
+/// ## usage
+/// ```rs
+/// rowcount!(
+///     sqlx::macros::query("DELETE FROM users WHERE users.name IS NOT NULL")
+///         .execute(),
+///     "Trace logging message, yeeting all users!\nCustom text: {}",
+///     "Error message! This one's bad, boss!\nAdditional info: {}",
+///     "You can format in whatever you want!"
+/// )
+/// ```
 macro_rules! rowcount {
     ($res:expr, $trace:literal, $err:literal, $( $args:expr ),*) => {
         match $res.await {
@@ -107,5 +122,16 @@ pub async fn add_tag(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<u64> {
 
 pub async fn remove_tag(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<u64> {
     let g = guild as i64;
-    rowcount!(query!("DELETE FROM `tagsubs`"))
+    rowcount!(
+        query!(
+            "DELETE FROM `servertags` WHERE `tagname` = ? AND `serverid` = ?",
+            tag,
+            g
+        )
+        .execute(conn),
+        "Deleting {} for guild ID {}",
+        "Something went wrong deleting tag {} for guild ID {}!",
+        tag,
+        g
+    )
 }
