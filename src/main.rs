@@ -297,6 +297,10 @@ async fn main() {
         .max_connections(5)
         .connect_with(
             sqlx::sqlite::SqliteConnectOptions::new()
+                .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+                .foreign_keys(true)
+                .read_only(false)
+                .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
                 .filename(zwei_conf::DATADIR.join(&conf.database))
                 .create_if_missing(true),
         )
