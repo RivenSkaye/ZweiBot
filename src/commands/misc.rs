@@ -67,8 +67,8 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     let botdata = ctx.data.read().await;
     let cmd_title = "Bot uptime";
+    let now = Utc::now().timestamp();
     if let Some(lifetime) = botdata.get::<ZweiData>() {
-        let now = Utc::now().timestamp();
         let starttime = &lifetime["Init"];
         let diff = now - *starttime;
         let secs = diff % 60;
