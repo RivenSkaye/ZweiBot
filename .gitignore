@@ -13,6 +13,8 @@ Dependencies.zip
 # Datastores #
 *.sqlite
 *.sdb
+*.sdb-wal
+*.sdb-shm
 *.json
 
 # Python stuff #
