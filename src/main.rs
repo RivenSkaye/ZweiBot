@@ -18,7 +18,7 @@ use std::{
 extern crate log;
 use env_logger;
 
-//mod commands;
+mod commands;
 mod dbx;
 mod zwei_conf;
 
@@ -283,11 +283,11 @@ async fn main() {
                 .owners(owners.clone())
                 .case_insensitivity(true)
         })
-        .help(&ZWEI_HELP);
-    //.group(&commands::modtools::MODTOOLS_GROUP)
-    //.group(&commands::misc::MISC_GROUP)
-    //.group(&commands::misc::PREFIX_GROUP)
-    //.group(&commands::subs::TAG_GROUP);
+        .help(&ZWEI_HELP)
+        .group(&commands::modtools::MODTOOLS_GROUP)
+        .group(&commands::misc::MISC_GROUP)
+        .group(&commands::misc::PREFIX_GROUP)
+        .group(&commands::subs::TAG_GROUP);
     let mut bot = Client::builder(&conf.token, GatewayIntents::all())
         .event_handler(Handler)
         .framework(fw)

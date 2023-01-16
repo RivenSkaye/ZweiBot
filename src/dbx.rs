@@ -88,3 +88,24 @@ pub async fn filter_tags(conn: &Pool, guild: u64, tagvec: Vec<String>) -> ZweiDb
             .collect()
     })
 }
+
+pub async fn add_tag(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<u64> {
+    let g = guild as i64;
+    rowcount!(
+        query!(
+            "INSERT INTO `servertags` (`serverid`, `tagname`) VALUES (?, ?)",
+            g,
+            tag
+        )
+        .execute(conn),
+        "Adding tag {} to guild ID {}",
+        "INSERT failed with tag {} for guild ID {}",
+        tag,
+        g
+    )
+}
+
+pub async fn remove_tag(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<u64> {
+    let g = guild as i64;
+    rowcount!(query!("DELETE FROM `tagsubs`"))
+}
