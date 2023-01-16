@@ -159,8 +159,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                 return Err(etxt.into());
             }
         };
-        let dbc = conn.lock().await;
-        let res = dbx::set_prefix(&dbc, guild, pfx)?;
+        let res = dbx::set_prefix(conn, guild, pfx).await?;
         match res {
             1.. => (),
             _ => {
@@ -200,8 +199,7 @@ async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
     {
         let botdata = ctx.data.read().await;
         if let Some(conn) = botdata.get::<ZweiDbConn>() {
-            let dbc = conn.lock().await;
-            let res = dbx::remove_prefix(&dbc, guild)?;
+            let res = dbx::remove_prefix(conn, guild).await?;
             match res {
                 1 => (),
                 0 => {

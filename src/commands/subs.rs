@@ -40,11 +40,10 @@ async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
                 ).await;
             }
         };
-        let dbc = conn.lock().await;
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = dbx::add_tag(&dbc, guild_id, &tagstr.to_lowercase());
-            match res {
+            let res = dbx::add_tag(conn, guild_id, &tagstr.to_lowercase());
+            match res.await {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
                 _ => {
                     ok_count -= 1;
@@ -129,11 +128,10 @@ async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
                 ).await;
             }
         };
-        let dbc = conn.lock().await;
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = dbx::remove_tag(&dbc, guild_id, &tagstr.to_lowercase());
-            match res {
+            let res = dbx::remove_tag(conn, guild_id, &tagstr.to_lowercase());
+            match res.await {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
                 _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
             };
@@ -204,8 +202,7 @@ async fn list_tags(ctx: &Context, msg: &Message) -> CommandResult {
                 ).await;
             }
         };
-        let dbc = conn.lock().await;
-        let tags = dbx::get_server_tags(&dbc, guild_id)?;
+        let tags = dbx::get_server_tags(conn, guild_id).await?;
         send_ok(
             ctx,
             msg,
@@ -247,11 +244,10 @@ async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
                 ).await;
             }
         };
-        let dbc = conn.lock().await;
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = dbx::sub_to(&dbc, guild_id, &tagstr, auth);
-            match res {
+            let res = dbx::sub_to(conn, guild_id, &tagstr, auth);
+            match res.await {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
                 _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
             };
@@ -316,11 +312,10 @@ async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
                 ).await;
             }
         };
-        let dbc = conn.lock().await;
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = dbx::unsub(&dbc, guild_id, &tagstr, auth);
-            match res {
+            let res = dbx::unsub(conn, guild_id, &tagstr, auth);
+            match res.await {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
                 _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
             };
@@ -376,8 +371,7 @@ async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
                 ).await;
             }
         };
-        let dbc = conn.lock().await;
-        tags = dbx::usersubs(&dbc, guild_id, uid)?;
+        tags = dbx::usersubs(conn, guild_id, uid).await?;
     }
     return match tags.len() {
         1.. => {
@@ -451,9 +445,8 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
                 ).await;
             }
         };
-        let dbc = conn.lock().await;
-        let tagcount = dbx::are_tags_in_server(&dbc, guild_id, &tags);
-        let valid = match tagcount {
+        let tagcount = dbx::are_tags_in_server(conn, guild_id, &tags);
+        let valid = match tagcount.await {
             Ok(c) => c > 0,
             Err(e) => {
                 send_err(ctx, msg, format!("{e}")).await?;
@@ -472,8 +465,8 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
             if tag == "" || tag == " " {
                 continue;
             }
-            let subs = dbx::get_subbers(&dbc, guild_id, &tag);
-            match subs {
+            let subs = dbx::get_subbers(conn, guild_id, &tag);
+            match subs.await {
                 Ok(s) => {
                     users.extend(s);
                 }
@@ -506,20 +499,20 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
         let mut pingmsg = String::with_capacity(2000);
         pingmsg.push_str(&tagmsg);
         for user in users {
-            // A Discord ID is 18 chars long. A user ping (<&ID>) is 21
-            // Message limit is 2k. So 2k - 21 = 1979.
-            // SPACES ARE FOR THE WEAK!
-            // so make sure we can actually fit those 21 characters in the message
+            // A Discord ID is 18 chars long. A user ping (<@ID>) is 21
+            // A space adds one, for 22 chars added.
+            // Message limit is 2k. So 2k - 22 = 1978.
+            // so make sure we can actually fit those 22 characters in the message
             // if not, push a clone of it into the vec up there.
             // Then send all messages.
-            if charcount > 1979 {
+            if charcount > 1978 {
                 paginated.push(pingmsg.clone());
                 pingmsg.clear();
                 pingmsg.push_str(&tagmsg);
                 charcount = initial;
             }
             pingmsg.push_str(format!(" <@{user}>").as_str());
-            charcount += 21;
+            charcount += 22;
         }
         paginated.push(pingmsg);
         for page in paginated {
