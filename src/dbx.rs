@@ -94,16 +94,6 @@ pub async fn get_subbers(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<Vec
     .map(|ids|ids.iter().map(|id| id.userid as u64).collect())
 }
 
-pub async fn filter_tags(conn: &Pool, guild: u64, tagvec: Vec<String>) -> ZweiDbRes<Vec<String>> {
-    get_server_tags(conn, guild).await.map(|tags| {
-        tagvec
-            .iter()
-            .filter(|t| tags.contains(t))
-            .cloned()
-            .collect()
-    })
-}
-
 pub async fn add_tag(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<u64> {
     let g = guild as i64;
     rowcount!(
@@ -134,4 +124,63 @@ pub async fn remove_tag(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<u64>
         tag,
         g
     )
+}
+
+async fn get_tag_id(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<i64> {
+    let g = guild as i64;
+    query!(
+        "SELECT `tagid` FROM `servertags` WHERE `serverid` = ? AND `tagname` = ?",
+        g,
+        tag
+    )
+    .fetch_one(conn)
+    .await
+    .map(|res| res.tagid)
+}
+
+pub async fn sub_to(conn: &Pool, guild: u64, tag: &String, uid: u64) -> ZweiDbRes<u64> {
+    let u = uid as i64;
+    let t = get_tag_id(conn, guild, tag).await?;
+    rowcount!(
+        query!("INSERT INTO `tagsubs` VALUES (?, ?)", t, u).execute(conn),
+        "Subscribing user ID {} to tag ID {}",
+        "Something went wrong, failed to subscribe user {} to {}",
+        u,
+        t
+    )
+}
+
+pub async fn unsub(conn: &Pool, guild: u64, tag: &String, uid: u64) -> ZweiDbRes<u64> {
+    let u = uid as i64;
+    let t = get_tag_id(conn, guild, tag).await?;
+    rowcount!(
+        query!(
+            "DELETE FROM `tagsubs` WHERE `tagid` = ? AND `userid` = ?",
+            t,
+            u
+        )
+        .execute(conn),
+        "Unsubscribing user ID {} from tag ID {}",
+        "Something went wrong, failed to unsubscribe user {} from {}",
+        u,
+        t
+    )
+}
+
+pub async fn usersubs(conn: &Pool, guild: u64, uid: u64) -> ZweiDbRes<Vec<String>> {
+    let g = guild as i64;
+    let u = uid as i64;
+    query!(
+        "SELECT `tagname` FROM `servertags` WHERE `serverid` = ? AND `tagid` IN (SELECT `tagid` FROM `tagsubs` WHERE userid = ?)",
+        g, u
+    )
+    .fetch_all(conn)
+    .await
+    .map(|res| res.iter().map(|row| row.tagname.to_owned()).collect())
+}
+
+pub async fn are_tags_in_server(conn: &Pool, guild: u64, tagvec: &Vec<String>) -> ZweiDbRes<usize> {
+    get_server_tags(conn, guild)
+        .await
+        .map(|res| res.iter().filter(|tag| tagvec.contains(tag)).count())
 }

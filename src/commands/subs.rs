@@ -42,8 +42,8 @@ async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         };
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = dbx::add_tag(conn, guild_id, &tagstr.to_lowercase());
-            match res.await {
+            let res = dbx::add_tag(conn, guild_id, &tagstr.to_lowercase()).await;
+            match res {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
                 _ => {
                     ok_count -= 1;
@@ -130,8 +130,8 @@ async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         };
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = dbx::remove_tag(conn, guild_id, &tagstr.to_lowercase());
-            match res.await {
+            let res = dbx::remove_tag(conn, guild_id, &tagstr.to_lowercase()).await;
+            match res {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
                 _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
             };
