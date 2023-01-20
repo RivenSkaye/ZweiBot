@@ -15,7 +15,7 @@ pub(crate) type ZweiDbRes<T> = Result<T, SQLerr>;
 
 pub async fn get_all_prefixes(mut conn: Connection<Sqlite>) -> HashMap<u64, String> {
     trace!("Getting all prefixes from the database");
-    query!("SELECT `server`, `prefix` FROM `prefixes`")
+    query!("SELECT server, prefix FROM prefixes")
         .fetch_all(&mut conn)
         .await
         .unwrap_or_else(|e| {
@@ -60,7 +60,7 @@ macro_rules! rowcount {
 pub async fn set_prefix(conn: &Pool, guild: u64, pfx: &str) -> ZweiDbRes<u64> {
     let g = guild as i64;
     rowcount!(
-        query!("INSERT OR REPLACE INTO `prefixes` VALUES(?, ?)", g, pfx).execute(conn),
+        query!("INSERT OR REPLACE INTO prefixes VALUES(?, ?)", g, pfx).execute(conn),
         "Setting custom prefix {} for guild ID {}",
         "Failed to set custom prefix {} for guild ID {}",
         pfx,
@@ -71,7 +71,7 @@ pub async fn set_prefix(conn: &Pool, guild: u64, pfx: &str) -> ZweiDbRes<u64> {
 pub async fn remove_prefix(conn: &Pool, guild: u64) -> ZweiDbRes<u64> {
     let g = guild as i64;
     rowcount!(
-        query!("DELETE FROM `prefixes` WHERE `server` = ?", g).execute(conn),
+        query!("DELETE FROM prefixes WHERE server = ?", g).execute(conn),
         "Removing custom prefix for guild ID {}",
         "Failed to remove custom prefix for guild ID {}",
         guild
@@ -80,7 +80,7 @@ pub async fn remove_prefix(conn: &Pool, guild: u64) -> ZweiDbRes<u64> {
 
 pub async fn get_server_tags(conn: &Pool, guild: u64) -> ZweiDbRes<Vec<String>> {
     let g = guild as i64;
-    query!("SELECT `tagname` FROM `servertags` WHERE `serverid` = ?", g)
+    query!("SELECT tagname FROM servertags WHERE serverid = ?", g)
         .fetch_all(conn)
         .await
         .map(|r| r.iter().map(|row| row.tagname.to_owned()).collect())
@@ -88,7 +88,7 @@ pub async fn get_server_tags(conn: &Pool, guild: u64) -> ZweiDbRes<Vec<String>> 
 
 pub async fn get_subbers(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<Vec<u64>> {
     let g = guild as i64;
-    query!("SELECT `userid` FROM `tagsubs` WHERE `tagid` = (SELECT `tagid` FROM `servertags` WHERE `serverid` = ? AND `tagname` = ?)", g, tag)
+    query!("SELECT userid FROM tagsubs WHERE tagid = (SELECT tagid FROM servertags WHERE serverid = ? AND tagname = ?)", g, tag)
     .fetch_all(conn)
     .await
     .map(|ids|ids.iter().map(|id| id.userid as u64).collect())
@@ -98,7 +98,7 @@ pub async fn add_tag(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<u64> {
     let g = guild as i64;
     rowcount!(
         query!(
-            "INSERT INTO `servertags` (`serverid`, `tagname`) VALUES (?, ?)",
+            "INSERT INTO servertags (serverid, tagname) VALUES (?, ?)",
             g,
             tag
         )
@@ -114,7 +114,7 @@ pub async fn remove_tag(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<u64>
     let g = guild as i64;
     rowcount!(
         query!(
-            "DELETE FROM `servertags` WHERE `tagname` = ? AND `serverid` = ?",
+            "DELETE FROM servertags WHERE tagname = ? AND serverid = ?",
             tag,
             g
         )
@@ -129,7 +129,7 @@ pub async fn remove_tag(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<u64>
 async fn get_tag_id(conn: &Pool, guild: u64, tag: &String) -> ZweiDbRes<i64> {
     let g = guild as i64;
     query!(
-        "SELECT `tagid` FROM `servertags` WHERE `serverid` = ? AND `tagname` = ?",
+        "SELECT tagid FROM servertags WHERE serverid = ? AND tagname = ?",
         g,
         tag
     )
@@ -142,7 +142,7 @@ pub async fn sub_to(conn: &Pool, guild: u64, tag: &String, uid: u64) -> ZweiDbRe
     let u = uid as i64;
     let t = get_tag_id(conn, guild, tag).await?;
     rowcount!(
-        query!("INSERT INTO `tagsubs` VALUES (?, ?)", t, u).execute(conn),
+        query!("INSERT INTO tagsubs VALUES (?, ?)", t, u).execute(conn),
         "Subscribing user ID {} to tag ID {}",
         "Something went wrong, failed to subscribe user {} to {}",
         u,
@@ -154,12 +154,7 @@ pub async fn unsub(conn: &Pool, guild: u64, tag: &String, uid: u64) -> ZweiDbRes
     let u = uid as i64;
     let t = get_tag_id(conn, guild, tag).await?;
     rowcount!(
-        query!(
-            "DELETE FROM `tagsubs` WHERE `tagid` = ? AND `userid` = ?",
-            t,
-            u
-        )
-        .execute(conn),
+        query!("DELETE FROM tagsubs WHERE tagid = ? AND userid = ?", t, u).execute(conn),
         "Unsubscribing user ID {} from tag ID {}",
         "Something went wrong, failed to unsubscribe user {} from {}",
         u,
@@ -171,7 +166,7 @@ pub async fn usersubs(conn: &Pool, guild: u64, uid: u64) -> ZweiDbRes<Vec<String
     let g = guild as i64;
     let u = uid as i64;
     query!(
-        "SELECT `tagname` FROM `servertags` WHERE `serverid` = ? AND `tagid` IN (SELECT `tagid` FROM `tagsubs` WHERE userid = ?)",
+        "SELECT tagname FROM servertags WHERE serverid = ? AND tagid IN (SELECT tagid FROM tagsubs WHERE userid = ?)",
         g, u
     )
     .fetch_all(conn)
