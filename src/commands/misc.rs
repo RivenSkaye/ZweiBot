@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::{Timelike, Utc};
 use serenity::{
     framework::standard::{
         macros::{command, group},
@@ -88,19 +88,24 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     }
 }
 
+fn todayseconds() -> Option<i64> {
+    Utc::now()
+        .with_hour(0)?
+        .with_minute(0)?
+        .with_second(0)?
+        .timestamp()
+        .into()
+}
+
 #[command]
 #[description = "Get the seconds-exact current UTC time, disregarding leap seconds."]
 #[help_available]
 async fn now(ctx: &Context, msg: &Message) -> CommandResult {
-    let now = Utc::now().timestamp()
-        - Utc::now()
-            .date_naive()
-            .and_hms_opt(0, 0, 0)
-            .unwrap()
-            .and_local_timezone(Utc)
-            .unwrap()
-            .timestamp();
-    let diff = now;
+    let stamp = match todayseconds() {
+        Some(s) => s,
+        None => unreachable!(),
+    };
+    let diff = Utc::now().timestamp() - stamp;
     let secs = diff % 60;
     let mins = (diff % 3600) / 60;
     let hours = diff / 3600;
