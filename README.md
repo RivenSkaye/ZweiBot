@@ -19,6 +19,8 @@ API too much were bogus.
 So in the vein of what this bot was meant for, learning a new lang, I'm now
 using it to teach myself Rust. And I gotta say I like it!
 
+_Features advertised in this repository may not yet be available_
+
 ## The Goal
 
 Zwei was created with the idea of making a bot that anyone can host and edit
