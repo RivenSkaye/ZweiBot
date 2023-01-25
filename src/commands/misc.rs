@@ -92,7 +92,14 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
 #[description = "Get the seconds-exact current UTC time, disregarding leap seconds."]
 #[help_available]
 async fn now(ctx: &Context, msg: &Message) -> CommandResult {
-    let now = Utc::now().timestamp() - Utc::today().and_hms(0, 0, 0).timestamp();
+    let now = Utc::now().timestamp()
+        - Utc::now()
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_local_timezone(Utc)
+            .unwrap()
+            .timestamp();
     let diff = now;
     let secs = diff % 60;
     let mins = (diff % 3600) / 60;
