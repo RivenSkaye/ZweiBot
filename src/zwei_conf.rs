@@ -58,7 +58,7 @@ fn default_db() -> PathBuf {
 /// Zwei searches in to find the stuff she needs to run.
 /// Used to define the [`default_db`] and to fetch the config file.
 pub(crate) static DATADIR: Lazy<PathBuf> = Lazy::new(get_data_dir);
-/// LazyStatic config powered by [`read_conf`].
+/// once_cell Lazy config powered by [`read_conf`].
 pub(crate) static CONF: Lazy<Conf> = Lazy::new(|| read_conf().unwrap());
 
 /// # get_data_dir

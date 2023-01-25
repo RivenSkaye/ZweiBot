@@ -263,7 +263,7 @@ pub async fn send_ok(
 #[help]
 #[lacking_permissions = "hide"]
 #[lacking_ownership = "hide"]
-#[embed_error_colour("#9A48C9")] // I wish I could use my lazy static constants here
+#[embed_error_colour("#9A48C9")] // I wish I could use my once_cell consts here
 #[embed_success_colour("#B82748")] // because that would allow config colors to be used...
 #[strikethrough_commands_tip_in_guild = ""]
 #[strikethrough_commands_tip_in_dm = ""]
