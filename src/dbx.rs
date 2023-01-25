@@ -35,7 +35,7 @@ pub async fn get_all_prefixes(mut conn: Connection<Sqlite>) -> HashMap<u64, Stri
 /// ## usage
 /// ```rs
 /// rowcount!(
-///     sqlx::macros::query("DELETE FROM users WHERE users.name IS NOT NULL")
+///     sqlx::macros::query!("DELETE FROM users WHERE users.name IS NOT NULL")
 ///         .execute(),
 ///     "Trace logging message, yeeting all users!\nCustom text: {}",
 ///     "Error message! This one's bad, boss!\nAdditional info: {}",
