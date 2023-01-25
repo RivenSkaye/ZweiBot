@@ -88,27 +88,14 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     }
 }
 
-fn todayseconds() -> Option<i64> {
-    Utc::now()
-        .with_hour(0)?
-        .with_minute(0)?
-        .with_second(0)?
-        .timestamp()
-        .into()
-}
-
 #[command]
 #[description = "Get the seconds-exact current UTC time, disregarding leap seconds."]
 #[help_available]
 async fn now(ctx: &Context, msg: &Message) -> CommandResult {
-    let stamp = match todayseconds() {
-        Some(s) => s,
-        None => unreachable!(),
-    };
-    let diff = Utc::now().timestamp() - stamp;
-    let secs = diff % 60;
-    let mins = (diff % 3600) / 60;
-    let hours = diff / 3600;
+    let now = Utc::now();
+    let hours = now.hour();
+    let mins = now.minute();
+    let secs = now.second();
     let difftxt = format!("{hours:02}:{mins:02}:{secs:02}");
     send_ok(ctx, msg, "Current UTC time", difftxt).await
 }
