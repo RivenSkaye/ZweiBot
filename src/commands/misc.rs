@@ -278,7 +278,7 @@ async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[group("Misc")]
 #[commands(exit, uptime, now, owners)]
-#[summary = "Miscellaneous commands for bot management and statistics."]
+#[summary = "Miscellaneous commands for bot information."]
 struct Misc;
 
 #[group("Prefix")]
