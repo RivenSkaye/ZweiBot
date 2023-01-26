@@ -1,5 +1,5 @@
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{
     collections::HashSet,
     fs, io,
@@ -24,10 +24,10 @@ pub struct Conf {
     #[serde(default)]
     pub(crate) db_pass: String,
     /// The color to use for error messages.
-    #[serde(default = "default_err_color")]
+    #[serde(default = "default_err_color", deserialize_with = "strip_hex")]
     pub(crate) err_color: String,
     /// The color to use for success messages.
-    #[serde(default = "default_ok_color")]
+    #[serde(default = "default_ok_color", deserialize_with = "strip_hex")]
     pub(crate) ok_color: String,
     /// The log level to configure the env logger with.
     #[serde(default = "default_loglevel")]
@@ -124,4 +124,18 @@ fn read_conf() -> io::Result<Conf> {
     };
 
     Ok(conf)
+}
+
+/// # strip_hex
+/// Strips the leading # from
+fn strip_hex<'d, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'d>,
+{
+    let val: &str = Deserialize::deserialize(deserializer)?;
+    if let Some(s) = val.strip_prefix('#') {
+        Ok(s.to_owned())
+    } else {
+        Ok(val.to_owned())
+    }
 }
