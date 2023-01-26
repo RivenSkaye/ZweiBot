@@ -4,6 +4,7 @@ use serenity::{
         macros::{command, group},
         Args, CommandResult,
     },
+    futures::future,
     model::prelude::*,
     prelude::*,
 };
@@ -23,29 +24,28 @@ use crate::{
 #[example = ""]
 #[help_available]
 async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let cmd_name = "Shutting down";
     args.trimmed();
     let time: u64 = args.parse::<u64>().unwrap_or(1);
-    args.advance();
-    let botdata = ctx.data.read().await;
 
-    if let Some(manager) = botdata.get::<ShardManagerContainer>() {
-        let timetxt = if time >= 60 {
-            let secs = time % 60;
-            let mins = (time - secs) / 60;
-            format!(
-                "{mins} minute{} and {secs} second{}",
-                if mins != 1 { "s" } else { "" },
-                if secs != 1 { "s" } else { "" }
-            )
-        } else {
-            format!("{time} second{}", if time != 1 { "s" } else { "" })
-        };
+    if let Some(manager) = ctx.data.read().await.get::<ShardManagerContainer>() {
         send_ok(
             ctx,
             msg,
-            cmd_name,
-            format!("I'm taking a nap in {timetxt}."),
+            "Shutting down",
+            format!(
+                "I'm taking a nap in {}.",
+                if time >= 60 {
+                    let secs = time % 60;
+                    let mins = (time - secs) / 60;
+                    format!(
+                        "{mins} minute{} and {secs} second{}",
+                        if mins != 1 { "s" } else { "" },
+                        if secs != 1 { "s" } else { "" }
+                    )
+                } else {
+                    format!("{time} second{}", if time != 1 { "s" } else { "" })
+                }
+            ),
         )
         .await?;
         sleep(Duration::from_secs(time)).await;
@@ -65,19 +65,19 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 #[command]
 #[description = "Prints the bot's total running time since the `on_ready` event fired."]
 async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
-    let botdata = ctx.data.read().await;
-    let cmd_title = "Bot uptime";
-    let now = Utc::now().timestamp();
-    if let Some(lifetime) = botdata.get::<ZweiData>() {
+    if let Some(lifetime) = ctx.data.read().await.get::<ZweiData>() {
         let starttime = &lifetime["Init"];
-        let diff = now - *starttime;
+        let diff = Utc::now().timestamp() - *starttime;
         let secs = diff % 60;
         let mins = (diff % 3600) / 60;
         let hours = diff / 3600;
-        let difftxt = format!(
-            "I've been running around for {hours} hours, {mins} minutes and {secs} seconds now.",
-        );
-        send_ok(ctx, msg, cmd_title, difftxt).await
+        send_ok(
+            ctx,
+            msg,
+            "Bot uptime",
+            format!("I've been running around for {hours} hours, {mins} minutes and {secs} seconds now.")
+        )
+        .await
     } else {
         send_err(
             ctx,
@@ -106,16 +106,26 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
 #[aliases("credits", "creators")]
 async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
     let botdata = ctx.data.read().await;
-    let owner_ids = botdata.get::<ZweiOwners>().into_iter().flatten().copied();
+    let owner_names = future::try_join_all(
+        botdata
+            .get::<ZweiOwners>()
+            .into_iter()
+            .flatten()
+            .copied()
+            .map(|id| get_name(msg, ctx, id)),
+    )
+    .await?;
 
-    let mut owner_names = vec![
-        "These are the wonderful people who wrote me or were guinea pigs for testing!".to_owned(),
-    ];
-    for id in owner_ids {
-        owner_names.push(get_name(msg, ctx, id).await?);
-    }
-
-    send_ok(ctx, msg, "Credits", owner_names.join("\n- ")).await
+    send_ok(
+        ctx,
+        msg,
+        "Credits",
+        format!(
+            "These are the wonderful people who are making sure Kuro and I can keep going!\n- {}",
+            owner_names.join("\n- ")
+        ),
+    )
+    .await
 }
 
 #[command]
@@ -148,36 +158,34 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     }
     let guild: u64 = msg.guild_id.unwrap().0;
     let pfx = args.rest();
-    {
-        let botdata = ctx.data.read().await;
-        let conn = match botdata.get::<ZweiDbConn>() {
-            Some(conn) => conn,
-            _ => {
-                let etxt = "Something went wrong requesting the database connection!";
-                send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-                return Err(etxt.into());
-            }
-        };
-        let res = dbx::set_prefix(conn, guild, pfx).await?;
-        match res {
-            1.. => (),
-            _ => {
-                let etxt = "Couldn't update the prefix!";
-                send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-                return Err(etxt.into());
-            }
-        };
-    }
 
-    {
-        let mut wbd = ctx.data.write().await;
-        if let Some(data) = wbd.get_mut::<ZweiPrefixes>() {
-            data.insert(guild, pfx.to_owned());
-        } else {
-            let etxt = "Can't update the server prefix in the cache!";
+    let botdata = ctx.data.read().await;
+    let conn = match botdata.get::<ZweiDbConn>() {
+        Some(conn) => conn,
+        _ => {
+            let etxt = "Something went wrong requesting the database connection!";
             send_err_titled(ctx, msg, "Change prefix", etxt).await?;
             return Err(etxt.into());
         }
+    };
+
+    match dbx::set_prefix(conn, guild, pfx).await? {
+        1.. => (),
+        _ => {
+            return send_err_titled(ctx, msg, "Change prefix", "Couldn't update the prefix!").await;
+        }
+    };
+
+    if let Some(data) = ctx.data.write().await.get_mut::<ZweiPrefixes>() {
+        data.insert(guild, pfx.to_owned());
+    } else {
+        return send_err_titled(
+            ctx,
+            msg,
+            "Change prefix",
+            "Can't update the server prefix in the cache!",
+        )
+        .await;
     }
 
     send_ok(
@@ -195,39 +203,34 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[required_permissions("MANAGE_GUILD")]
 async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
     let guild: u64 = msg.guild_id.unwrap().0;
-    {
-        let botdata = ctx.data.read().await;
-        if let Some(conn) = botdata.get::<ZweiDbConn>() {
-            let res = dbx::remove_prefix(conn, guild).await?;
-            match res {
-                1 => (),
-                0 => {
-                    let etxt = "There was no custom prefix stored for this server.";
-                    send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
-                    Err(String::from(etxt))?
-                }
-                _ => {
-                    let etxt = "Prefix change affected multiple rows...";
-                    send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
-                    ()
-                }
-            };
-        } else {
-            let etxt = "Something went wrong requesting the database connection!";
-            send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
-            Err(String::from(etxt))?;
-        }
+
+    let botdata = ctx.data.read().await;
+    if let Some(conn) = botdata.get::<ZweiDbConn>() {
+        let res = dbx::remove_prefix(conn, guild).await?;
+        match res {
+            1 => (),
+            0 => {
+                let etxt = "There was no custom prefix stored for this server.";
+                send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
+                Err(String::from(etxt))?
+            }
+            _ => {
+                let etxt = "Prefix change affected multiple rows...";
+                send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
+                ()
+            }
+        };
+    } else {
+        let etxt = "Something went wrong requesting the database connection!";
+        send_err_titled(ctx, msg, "Clear prefix", etxt).await?
     }
 
-    {
-        let mut wbd = ctx.data.write().await;
-        if let Some(data) = wbd.get_mut::<ZweiPrefixes>() {
-            data.remove(&guild);
-        } else {
-            let etxt = "Can't update the cache!";
-            send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
-            Err(String::from(etxt))?
-        }
+    let mut wbd = ctx.data.write().await;
+    if let Some(data) = wbd.get_mut::<ZweiPrefixes>() {
+        data.remove(&guild);
+    } else {
+        let etxt = "Can't update the cache!";
+        send_err_titled(ctx, msg, "Clear prefix", etxt).await?
     }
 
     send_ok(
