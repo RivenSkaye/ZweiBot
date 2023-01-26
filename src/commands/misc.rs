@@ -159,33 +159,38 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let guild: u64 = msg.guild_id.unwrap().0;
     let pfx = args.rest();
 
-    let botdata = ctx.data.read().await;
-    let conn = match botdata.get::<ZweiDbConn>() {
-        Some(conn) => conn,
-        _ => {
-            let etxt = "Something went wrong requesting the database connection!";
-            send_err_titled(ctx, msg, "Change prefix", etxt).await?;
-            return Err(etxt.into());
-        }
-    };
+    {
+        let botdata = ctx.data.read().await;
+        let conn = match botdata.get::<ZweiDbConn>() {
+            Some(conn) => conn,
+            _ => {
+                let etxt = "Something went wrong requesting the database connection!";
+                send_err_titled(ctx, msg, "Change prefix", etxt).await?;
+                return Err(etxt.into());
+            }
+        };
 
-    match dbx::set_prefix(conn, guild, pfx).await? {
-        1.. => (),
-        _ => {
-            return send_err_titled(ctx, msg, "Change prefix", "Couldn't update the prefix!").await;
-        }
-    };
+        match dbx::set_prefix(conn, guild, pfx).await? {
+            1.. => (),
+            _ => {
+                return send_err_titled(ctx, msg, "Change prefix", "Couldn't update the prefix!")
+                    .await;
+            }
+        };
+    }
 
-    if let Some(data) = ctx.data.write().await.get_mut::<ZweiPrefixes>() {
-        data.insert(guild, pfx.to_owned());
-    } else {
-        return send_err_titled(
-            ctx,
-            msg,
-            "Change prefix",
-            "Can't update the server prefix in the cache!",
-        )
-        .await;
+    {
+        if let Some(data) = ctx.data.write().await.get_mut::<ZweiPrefixes>() {
+            data.insert(guild, pfx.to_owned());
+        } else {
+            return send_err_titled(
+                ctx,
+                msg,
+                "Change prefix",
+                "Can't update the server prefix in the cache!",
+            )
+            .await;
+        }
     }
 
     send_ok(
@@ -204,33 +209,37 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
     let guild: u64 = msg.guild_id.unwrap().0;
 
-    let botdata = ctx.data.read().await;
-    if let Some(conn) = botdata.get::<ZweiDbConn>() {
-        let res = dbx::remove_prefix(conn, guild).await?;
-        match res {
-            1 => (),
-            0 => {
-                let etxt = "There was no custom prefix stored for this server.";
-                send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
-                Err(String::from(etxt))?
-            }
-            _ => {
-                let etxt = "Prefix change affected multiple rows...";
-                send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
-                ()
-            }
-        };
-    } else {
-        let etxt = "Something went wrong requesting the database connection!";
-        send_err_titled(ctx, msg, "Clear prefix", etxt).await?
+    {
+        let botdata = ctx.data.read().await;
+        if let Some(conn) = botdata.get::<ZweiDbConn>() {
+            let res = dbx::remove_prefix(conn, guild).await?;
+            match res {
+                1 => (),
+                0 => {
+                    let etxt = "There was no custom prefix stored for this server.";
+                    send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
+                    Err(String::from(etxt))?
+                }
+                _ => {
+                    let etxt = "Prefix change affected multiple rows...";
+                    send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
+                    ()
+                }
+            };
+        } else {
+            let etxt = "Something went wrong requesting the database connection!";
+            send_err_titled(ctx, msg, "Clear prefix", etxt).await?
+        }
     }
 
-    let mut wbd = ctx.data.write().await;
-    if let Some(data) = wbd.get_mut::<ZweiPrefixes>() {
-        data.remove(&guild);
-    } else {
-        let etxt = "Can't update the cache!";
-        send_err_titled(ctx, msg, "Clear prefix", etxt).await?
+    {
+        let mut wbd = ctx.data.write().await;
+        if let Some(data) = wbd.get_mut::<ZweiPrefixes>() {
+            data.remove(&guild);
+        } else {
+            let etxt = "Can't update the cache!";
+            send_err_titled(ctx, msg, "Clear prefix", etxt).await?
+        }
     }
 
     send_ok(
