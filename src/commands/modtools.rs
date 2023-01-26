@@ -1,3 +1,4 @@
+use log;
 use serenity::{
     framework::standard::{
         macros::{command, group},
@@ -37,6 +38,12 @@ async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         )
         .await;
     }
+    // Log guilds purging messages. Will be checked when ratelimits are hit.
+    log::info!(
+        "Purging {amount} messages in guild {} ({})",
+        msg.guild(ctx).unwrap().id.0,
+        msg.guild(ctx).unwrap().name
+    );
 
     let recent_messages = msg
         .channel_id

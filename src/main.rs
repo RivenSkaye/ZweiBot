@@ -78,7 +78,7 @@ impl EventHandler for Handler {
     /// This is run whenever something caused a (percieved) interruption in the
     /// connection to Discord, causing the active session to resume.
     async fn resume(&self, _: Context, _: ResumedEvent) {
-        println!("Reconnected at {}", Utc::now())
+        log::warn!("Reconnected at {}", Utc::now())
     }
 }
 
@@ -312,10 +312,13 @@ async fn main() {
             owners.extend(conf.owners.iter().map(|o| UserId(*o)));
             owners
         }
-        Err(why) => panic!(
-            "Couldn't find owners for the supplied token!\nToken: {}\n{:?}",
-            &conf.token, why
-        ),
+        Err(why) => {
+            log::error!("No owners received on token {}!\n{}", &conf.token, why);
+            panic!(
+                "Couldn't find owners for the supplied token!\nToken: {}\n{:?}",
+                &conf.token, why
+            )
+        }
     };
     let self_id = http.get_current_user().await.unwrap().id;
 
@@ -393,7 +396,14 @@ async fn main() {
 
     // And if the bot ends up having a panic, provide info
     if let Err(death) = bot.start().await {
-        println!("Zwei did not exit cleanly!\n{:}", death);
+        log::error!("Zwei did not exit cleanly!\n{:}", death);
         bot.shard_manager.lock().await.shutdown_all().await;
     }
+    bot.data
+        .read()
+        .await
+        .get::<ZweiDbConn>()
+        .unwrap()
+        .close()
+        .await;
 }

@@ -1,4 +1,5 @@
 use chrono::{Timelike, Utc};
+use log;
 use serenity::{
     framework::standard::{
         macros::{command, group},
@@ -26,6 +27,10 @@ use crate::{
 async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let time: u64 = args.parse::<u64>().unwrap_or(1);
+    log::info!(
+        "Received a shutdown request at UTC {} with {time}s timeout",
+        Utc::now()
+    );
 
     if let Some(manager) = ctx.data.read().await.get::<ShardManagerContainer>() {
         send_ok(
@@ -49,6 +54,7 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         )
         .await?;
         sleep(Duration::from_secs(time)).await;
+        log::info!("SYSTEM HALT");
         manager.lock().await.shutdown_all().await;
     } else {
         send_err(
@@ -57,6 +63,14 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             "I've lost control of Kuro, I'm stopping RIGHT NOW!",
         )
         .await?;
+        log::error!("Could not acquire shard manager, performing an unclean exit IMMEDIATELY!");
+        ctx.data
+            .read()
+            .await
+            .get::<ZweiDbConn>()
+            .expect("Couldn't acquire context manager or database connection.")
+            .close()
+            .await;
         panic!("Couldn't get the context manager from bot code!")
     }
     Ok(())
@@ -79,6 +93,7 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
         )
         .await
     } else {
+        log::error!("Unable to retrieve ZweiData object!");
         send_err(
             ctx,
             msg,
@@ -115,6 +130,8 @@ async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
             .map(|id| get_name(msg, ctx, id)),
     )
     .await?;
+
+    log::trace!("Earning street cred");
 
     send_ok(
         ctx,
@@ -164,6 +181,9 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         let conn = match botdata.get::<ZweiDbConn>() {
             Some(conn) => conn,
             _ => {
+                log::error!(
+                    "Couldn't acquire dayabase connection to change prefix to {pfx} for {guild}!"
+                );
                 let etxt = "Something went wrong requesting the database connection!";
                 send_err_titled(ctx, msg, "Change prefix", etxt).await?;
                 return Err(etxt.into());
@@ -173,6 +193,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         match dbx::set_prefix(conn, guild, pfx).await? {
             1.. => (),
             _ => {
+                log::error!("Couldn't update prefix for {guild} to {pfx}!");
                 return send_err_titled(ctx, msg, "Change prefix", "Couldn't update the prefix!")
                     .await;
             }
@@ -183,6 +204,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         if let Some(data) = ctx.data.write().await.get_mut::<ZweiPrefixes>() {
             data.insert(guild, pfx.to_owned());
         } else {
+            log::error!("Unable to update prefix cache!");
             return send_err_titled(
                 ctx,
                 msg,
@@ -220,13 +242,15 @@ async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
                     send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
                     Err(String::from(etxt))?
                 }
-                _ => {
+                n => {
+                    log::warn!("Removed {n} prefixes for guild {guild}...");
                     let etxt = "Prefix change affected multiple rows...";
                     send_err_titled(ctx, msg, "Clear prefix", etxt).await?;
                     ()
                 }
             };
         } else {
+            log::error!("Could not acquire database connection to clear prefix for {guild}");
             let etxt = "Something went wrong requesting the database connection!";
             send_err_titled(ctx, msg, "Clear prefix", etxt).await?
         }
@@ -237,6 +261,7 @@ async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
         if let Some(data) = wbd.get_mut::<ZweiPrefixes>() {
             data.remove(&guild);
         } else {
+            log::error!("Can't update the prefeix cache!");
             let etxt = "Can't update the cache!";
             send_err_titled(ctx, msg, "Clear prefix", etxt).await?
         }

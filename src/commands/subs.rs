@@ -1,3 +1,4 @@
+use log;
 use serenity::{
     framework::standard::{
         macros::{command, group},
@@ -32,6 +33,7 @@ async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         let conn = match botdata.get::<ZweiDbConn>() {
             Some(conn) => conn,
             _ => {
+                log::error!("Failed to acquire database connection object to add tags!");
                 return send_err_titled(
                     ctx,
                     msg,
@@ -45,6 +47,7 @@ async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
             match dbx::add_tag(conn, guild_id, &tagstr.to_lowercase()).await {
                 Ok(_) => ok_list.push_str(format!("\n+ {tagstr}").as_str()),
                 _ => {
+                    log::warn!("Failed to add tag {tagstr} for {guild_id}");
                     ok_count -= 1;
                     err_tags.push(tagstr);
                 }
@@ -123,6 +126,7 @@ async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         let conn = match botdata.get::<ZweiDbConn>() {
             Some(conn) => conn,
             _ => {
+                log::error!("Failed to acquire database connection object to remove tags!");
                 return send_err_titled(
                     ctx,
                     msg,
@@ -135,7 +139,10 @@ async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
             let tagstr: String = tag?;
             match dbx::remove_tag(conn, guild_id, &tagstr.to_lowercase()).await {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
-                _ => err_tags.push(tagstr),
+                _ => {
+                    log::warn!("Failed to remove tag {tagstr} for {guild_id}");
+                    err_tags.push(tagstr)
+                }
             };
         }
     }
@@ -202,6 +209,7 @@ async fn list_tags(ctx: &Context, msg: &Message) -> CommandResult {
         let conn = match botdata.get::<ZweiDbConn>() {
             Some(conn) => conn,
             _ => {
+                log::error!("Failed to acquire database connection object to list tags!");
                 return send_err_titled(
                     ctx,
                     msg,
@@ -244,6 +252,7 @@ async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         let conn = match botdata.get::<ZweiDbConn>() {
             Some(conn) => conn,
             _ => {
+                log::error!("Failed to acquire database connection object to add subscription!");
                 return send_err_titled(
                     ctx,
                     msg,
@@ -257,7 +266,10 @@ async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
             let res = dbx::sub_to(conn, guild_id, &tagstr, auth);
             match res.await {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
-                _ => err_list.push(tagstr),
+                _ => {
+                    log::warn!("Could not subscribe {auth} to {tagstr} in {guild_id}");
+                    err_list.push(tagstr)
+                }
             };
         }
     }
@@ -315,6 +327,7 @@ async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         let conn = match botdata.get::<ZweiDbConn>() {
             Some(conn) => conn,
             _ => {
+                log::error!("Failed to acquire database connection object to unsubscribe user!");
                 return send_err_titled(
                     ctx,
                     msg,
@@ -328,7 +341,10 @@ async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
             let res = dbx::unsub(conn, guild_id, &tagstr, auth);
             match res.await {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
-                _ => err_list.push(tagstr),
+                _ => {
+                    log::warn!("Couldn't unsibscribe {auth} from {tagstr} in {guild_id}");
+                    err_list.push(tagstr)
+                }
             };
         }
     }
@@ -374,6 +390,7 @@ async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
         let conn = match botdata.get::<ZweiDbConn>() {
             Some(conn) => conn,
             _ => {
+                log::error!("Failed to acquire database connection object to list subscriptions!");
                 return send_err_titled(
                     ctx,
                     msg,
@@ -398,6 +415,7 @@ async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
             .await
         }
         _ => {
+            log::warn!("Could not list subsctiptions for {uid} in {guild_id}");
             send_err_titled(
                 ctx,
                 msg,
@@ -448,6 +466,7 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
         let conn = match botdata.get::<ZweiDbConn>() {
             Some(conn) => conn,
             _ => {
+                log::error!("Failed to acquire database connection object to tag users!");
                 return send_err_titled(
                     ctx,
                     msg,
@@ -460,6 +479,10 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
         let valid = match tagcount.await {
             Ok(c) => c > 0,
             Err(e) => {
+                log::warn!(
+                    "Couldn't find any tags for {guild_id} matching `{}`",
+                    tags.join(", ")
+                );
                 send_err(ctx, msg, format!("{e}")).await?;
                 false
             }
@@ -487,15 +510,26 @@ async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandRe
         tagmsg.push_str(tags.join(", ").as_str());
     }
     if failed.len() > 0 {
+        log::warn!(
+            "Failed to find tags for {guild_id}: `{}`",
+            failed.join(", ")
+        );
         send_err_titled(
             ctx,
             msg,
             "Tags not found",
-            format!("The following tags do not exist: {}", failed.join("\n+ ")),
+            format!(
+                "The following tags do not exist:\n+ {}",
+                failed.join("\n+ ")
+            ),
         )
         .await?;
     }
     if users.len() == 0 {
+        log::warn!(
+            "Failed to find sunscribed users for {guild_id}: `{}`",
+            failed.join(", ")
+        );
         return send_err_titled(
             ctx,
             msg,
