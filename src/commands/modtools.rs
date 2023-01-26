@@ -215,7 +215,8 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             .unwrap();
 
         if self_id == mem_id.0 {
-            msg.reply(ctx, "<:ZweiAngery:844167326243880960>").await?;
+            msg.reply_ping(ctx, "<:ZweiAngery:844167326243880960>")
+                .await?;
             return Ok(());
         } else if selfrole.1 <= memrole.1 {
             return send_err(
