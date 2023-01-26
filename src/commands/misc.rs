@@ -19,7 +19,7 @@ use crate::{
 #[owners_only]
 #[max_args(1)]
 #[aliases("shutdown", "panic", "die", "sleep")]
-#[description = "Shuts down the bot, owner only. Optionally takes a time in seconds to wait, defaults to 1 second."]
+#[description = "Stops me in my tracks. Optionally takes a time in seconds to wait, defaults to 1 second."]
 #[example = "5"]
 #[example = ""]
 #[help_available]
@@ -33,7 +33,7 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             msg,
             "Shutting down",
             format!(
-                "I'm taking a nap in {}.",
+                "I'm going down in {}.",
                 if time >= 60 {
                     let secs = time % 60;
                     let mins = (time - secs) / 60;
@@ -63,7 +63,7 @@ async fn exit(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 }
 
 #[command]
-#[description = "Prints the bot's total running time since the `on_ready` event fired."]
+#[description = "Displays how long I've been roaming Lost Blue since ~~`on_ready` event fired~~ I woke up."]
 async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
     if let Some(lifetime) = ctx.data.read().await.get::<ZweiData>() {
         let starttime = &lifetime["Init"];
@@ -75,7 +75,7 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
             ctx,
             msg,
             "Bot uptime",
-            format!("I've been running around for {hours} hours, {mins} minutes and {secs} seconds now.")
+            format!("I've been roaming for {hours} hours, {mins} minutes and {secs} seconds."),
         )
         .await
     } else {
@@ -89,7 +89,7 @@ async fn uptime(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-#[description = "Get the seconds-exact current UTC time, disregarding leap seconds."]
+#[description = "Makes me check the current UTC time according to UNIX timestamps."]
 #[help_available]
 async fn now(ctx: &Context, msg: &Message) -> CommandResult {
     let now = Utc::now();
@@ -101,7 +101,7 @@ async fn now(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-#[description = "Provides information about the amazing people behind the bot."]
+#[description = "I think you should know these people, they're the ones that keep me going!"]
 #[help_available]
 #[aliases("credits", "creators")]
 async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
@@ -129,7 +129,7 @@ async fn owners(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-#[description = "Check the prefix for the current context"]
+#[description = "This is how you can get me to listen to requests."]
 #[help_available(false)]
 async fn get(ctx: &Context, msg: &Message) -> CommandResult {
     send_ok(
@@ -145,7 +145,7 @@ async fn get(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-#[description = "Change the guild prefix. Internally defers the command to get the current prefix if no arguments are given."]
+#[description = "Changes the arcane symbol that notifies me of commands."]
 #[min_args(0)]
 #[max_args(1)]
 #[only_in("guilds")]
@@ -203,7 +203,7 @@ async fn set(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 }
 
 #[command]
-#[description = "Clear the guild prefix and reset it to the bot's default."]
+#[description = "Makes me go back to listening to the default prefix."]
 #[only_in("guilds")]
 #[required_permissions("MANAGE_GUILD")]
 async fn clear(ctx: &Context, msg: &Message) -> CommandResult {

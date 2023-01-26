@@ -17,16 +17,16 @@ use crate::{
 #[aliases("create", "+")]
 #[only_in("guilds")]
 #[required_permissions("MANAGE_GUILD")]
-#[description = "Adds one or more tags for people in this server to subscribe to. Tags are always a single word, use dashes or underscores to avoid naming conflicts."]
+#[description = "Lets me notify people of certain tags when they subscribe to them. Tags are always a single word, so use dashes or underscores to avoid naming conflicts."]
 #[help_available(true)]
 async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        return send_err(ctx, msg, "I can't add tags without the actual tag to add.").await;
+        return send_err(ctx, msg, "I can't add tags without an actual tag to add.").await;
     }
     let guild_id = msg.guild_id.unwrap().0;
     let mut ok_count: usize = args.len();
     let mut ok_list: String = String::with_capacity(args.message().len() + (args.len() * 3));
-    let mut err_tags: Vec<String> = Vec::new();
+    let mut err_tags: Vec<String> = Vec::with_capacity(args.len());
     {
         let botdata = ctx.data.read().await;
         let conn = match botdata.get::<ZweiDbConn>() {
@@ -42,9 +42,8 @@ async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         };
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = dbx::add_tag(conn, guild_id, &tagstr.to_lowercase()).await;
-            match res {
-                Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
+            match dbx::add_tag(conn, guild_id, &tagstr.to_lowercase()).await {
+                Ok(_) => ok_list.push_str(format!("\n+ {tagstr}").as_str()),
                 _ => {
                     ok_count -= 1;
                     err_tags.push(tagstr);
@@ -73,14 +72,18 @@ async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         }
         _ => (),
     };
-    return match err_tags.len() {
+    match err_tags.len() {
         2.. => {
-            let mut err_msg =
-                String::from("The following tags were already registered on this server:");
-            for e in err_tags {
-                err_msg.push_str(format!("\n+ {}", e).as_str());
-            }
-            send_err_titled(ctx, msg, "Tags already registered", err_msg).await
+            send_err_titled(
+                ctx,
+                msg,
+                "Tags already registered",
+                format!(
+                    "The following tags were already registered on this server:\n+ {}",
+                    err_tags.join("\n+ ")
+                ),
+            )
+            .await
         }
         1 => {
             send_err_titled(
@@ -95,13 +98,13 @@ async fn add_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
             .await
         }
         _ => Ok(()),
-    };
+    }
 }
 
 #[command("remove")]
 #[only_in("guilds")]
 #[required_permissions("MANAGE_GUILD")]
-#[description = "Removes tags saved for this server."]
+#[description = "Makes me stop using this tag here, and unsubscribes all users from them."]
 #[help_available(true)]
 async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
@@ -114,7 +117,7 @@ async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     }
     let guild_id = msg.guild_id.unwrap().0;
     let mut ok_list: String = String::with_capacity(args.message().len() + (args.len() * 3));
-    let mut err_list = ok_list.clone();
+    let mut err_tags: Vec<String> = Vec::with_capacity(args.len());
     {
         let botdata = ctx.data.read().await;
         let conn = match botdata.get::<ZweiDbConn>() {
@@ -130,10 +133,9 @@ async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         };
         for tag in args.iter() {
             let tagstr: String = tag?;
-            let res = dbx::remove_tag(conn, guild_id, &tagstr.to_lowercase()).await;
-            match res {
+            match dbx::remove_tag(conn, guild_id, &tagstr.to_lowercase()).await {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
-                _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
+                _ => err_tags.push(tagstr),
             };
         }
     }
@@ -158,13 +160,16 @@ async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         }
         _ => (),
     };
-    return match err_list.len() {
+    match err_tags.len() {
         1 => {
             send_err_titled(
                 ctx,
                 msg,
                 "Tag not found!",
-                format!("{err_list} wasn't registered for this server."),
+                format!(
+                    "{} wasn't registered for this server.",
+                    err_tags.get(0).unwrap()
+                ),
             )
             .await
         }
@@ -173,19 +178,22 @@ async fn remove_tags(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
                 ctx,
                 msg,
                 "Tags not found!",
-                format!("This server didn't even have{err_list}"),
+                format!(
+                    "This server didn't even have these:\n+ {}",
+                    err_tags.join("\n+ ")
+                ),
             )
             .await
         }
         _ => Ok(()),
-    };
+    }
 }
 
 #[command("list")]
 #[only_in("guilds")]
 #[min_args(0)]
 #[max_args(0)]
-#[description = "Lists all tags available for subscribing to in this server."]
+#[description = "Lets me know you want to see all tags available in the server."]
 #[help_available(true)]
 async fn list_tags(ctx: &Context, msg: &Message) -> CommandResult {
     let guild_id = msg.guild_id.unwrap().0;
@@ -207,7 +215,7 @@ async fn list_tags(ctx: &Context, msg: &Message) -> CommandResult {
             ctx,
             msg,
             "Tags for this server",
-            format!("+ {}", tags.join("+ ")),
+            format!("+ {}", tags.join("\n+ ")),
         )
         .await
     }
@@ -216,7 +224,7 @@ async fn list_tags(ctx: &Context, msg: &Message) -> CommandResult {
 #[command("sub")]
 #[only_in("guilds")]
 #[aliases("subscribe")]
-#[description = "Subscribe to one or more tags in this server."]
+#[description = "I'll give you a poke if you tell me the tags you're interested in."]
 #[help_available(true)]
 async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
@@ -230,7 +238,7 @@ async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
     let guild_id = msg.guild_id.unwrap().0;
     let auth = msg.author.id.0;
     let mut ok_list: String = String::with_capacity(args.message().len() + (args.len() * 3));
-    let mut err_list = ok_list.clone();
+    let mut err_list = Vec::with_capacity(args.len());
     {
         let botdata = ctx.data.read().await;
         let conn = match botdata.get::<ZweiDbConn>() {
@@ -249,7 +257,7 @@ async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
             let res = dbx::sub_to(conn, guild_id, &tagstr, auth);
             match res.await {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
-                _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
+                _ => err_list.push(tagstr),
             };
         }
     }
@@ -267,24 +275,27 @@ async fn subscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
             ();
         }
     };
-    return match err_list.len() {
+    match err_list.len() {
         1.. => {
             send_err_titled(
                 ctx,
                 msg,
                 "Subscription failed",
-                format!("The following tags could not be found in this server:{err_list}"),
+                format!(
+                    "The following tags could not be found in this server:\n+ {}",
+                    err_list.join("\n+ ")
+                ),
             )
             .await
         }
         _ => Ok(()),
-    };
+    }
 }
 
 #[command("unsub")]
 #[only_in("guilds")]
 #[aliases("unsubscribe")]
-#[description = "Unsubscribe from one or more tags in this server."]
+#[description = "Lets me know you don't want to be pinged for certain tags anymore."]
 #[help_available(true)]
 async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
@@ -298,7 +309,7 @@ async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     let guild_id = msg.guild_id.unwrap().0;
     let auth = msg.author.id.0;
     let mut ok_list: String = String::with_capacity(args.message().len() + (args.len() * 3));
-    let mut err_list = ok_list.clone();
+    let mut err_list = Vec::with_capacity(args.len());
     {
         let botdata = ctx.data.read().await;
         let conn = match botdata.get::<ZweiDbConn>() {
@@ -317,7 +328,7 @@ async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
             let res = dbx::unsub(conn, guild_id, &tagstr, auth);
             match res.await {
                 Ok(_) => ok_list.push_str(format!("\n+ {}", tagstr).as_str()),
-                _ => err_list.push_str(format!("\n+ {}", tagstr).as_str()),
+                _ => err_list.push(tagstr),
             };
         }
     }
@@ -335,24 +346,24 @@ async fn unsubscribe(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
             ();
         }
     };
-    return match err_list.len() {
+    match err_list.len() {
         1.. => {
             send_err_titled(
                 ctx,
                 msg,
                 "Unsubscribing failed",
-                format!("You were not subscribed to following tags, or they could not be found in this server:{err_list}"),
+                format!("You were not subscribed to following tags, or they could not be found in this server:\n+ {}", err_list.join("\n+ ")),
             )
             .await
         }
         _ => Ok(()),
-    };
+    }
 }
 
 #[command("subs")]
 #[only_in("guilds")]
 #[aliases("subscriptions", "pongs")]
-#[description = "List all tags you're currently subscribed to."]
+#[description = "I'll tell you what you're currently subscribed to."]
 #[help_available(true)]
 async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
     let uid = msg.author.id.0;
@@ -373,7 +384,7 @@ async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
         };
         tags = dbx::usersubs(conn, guild_id, uid).await?;
     }
-    return match tags.len() {
+    match tags.len() {
         1.. => {
             send_ok(
                 ctx,
@@ -381,7 +392,7 @@ async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
                 "Your subcriptions",
                 format!(
                     "For this server, you are currently subscribed to:\n+ {}",
-                    tags.join("+ ")
+                    tags.join("\n+ ")
                 ),
             )
             .await
@@ -395,12 +406,12 @@ async fn list_subs(ctx: &Context, msg: &Message) -> CommandResult {
             )
             .await
         }
-    };
+    }
 }
 
 #[command("ping")]
 #[only_in("guilds")]
-#[description = "Notify all subscribed users of a relevant post."]
+#[description = "I'll tell everyone who wants to know that this tag was used."]
 async fn ping_all_subbers(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         return send_err_titled(
