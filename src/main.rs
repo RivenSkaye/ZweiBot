@@ -65,18 +65,13 @@ impl EventHandler for Handler {
     /// This gets called whenever the bot is being operated, and is used to set
     /// some initial state like the startup time of the bot.
     async fn ready(&self, ctx: Context, ready: Ready) {
-        let stime = Utc::now();
-        let time = stime.timestamp();
-        {
-            let mut data = ctx.data.write().await;
-            let lt = data
-                .get_mut::<ZweiData>()
-                .expect("Couldn't get lifetime info...")
-                .entry(String::from("Init"))
-                .or_insert(time);
-            *lt = time;
-        }
-        println!("{} connected to Discord at {}", ready.user.name, stime)
+        let time = Utc::now();
+        let mut data = ctx.data.write().await;
+        data.get_mut::<ZweiData>()
+            .expect("Couldn't get lifetime info...")
+            .entry(String::from("Init"))
+            .or_insert(time.timestamp());
+        println!("{} connected to Discord at {}", ready.user.name, time)
     }
 
     /// # resume
@@ -92,8 +87,7 @@ impl EventHandler for Handler {
 /// _display name_ for the context first, but falls back to the normal
 /// username if a nickname isn't set or the context is not a guild.
 pub async fn get_name(msg: &Message, ctx: &Context, mem: UserId) -> SerenityResult<String> {
-    let guild = msg.guild(ctx);
-    if let Some(g) = guild {
+    if let Some(g) = msg.guild(ctx) {
         let gmem = g.member(ctx, mem).await?;
         return Ok(gmem.display_name().into_owned());
     } else {
@@ -105,7 +99,10 @@ pub async fn get_name(msg: &Message, ctx: &Context, mem: UserId) -> SerenityResu
 /// # get_guildname
 /// Function to resolve the textual name for the guild from the message.
 pub async fn get_guildname(msg: &Message, ctx: &Context) -> String {
-    msg.guild_id.unwrap().name(ctx).unwrap_or(String::from(""))
+    msg.guild_id
+        .unwrap()
+        .name(ctx)
+        .unwrap_or(String::from("Unknown Server"))
 }
 
 /// # get_prefix
@@ -113,13 +110,21 @@ pub async fn get_guildname(msg: &Message, ctx: &Context) -> String {
 /// Returns either the default `;` in DMs or when the guild has no prefix,
 /// or returns the guild-specific prefix if one is set.
 pub async fn get_prefix(msg: &Message, ctx: &Context) -> String {
-    let def = String::from(";");
     let botdata = ctx.data.read().await;
     botdata
         .get::<ZweiPrefixes>()
         .and_then(|d| msg.guild_id.and_then(|g| d.get(&g.0)))
         .cloned()
-        .unwrap_or(def)
+        .unwrap_or(String::from(";"))
+}
+
+pub fn get_color(color: &str) -> SerenityResult<Color> {
+    if let Ok(col) = u32::from_str_radix(color, 16) {
+        Ok(Color::from(col))
+    } else {
+        log::error!("Invalid color provided in config, found `{color}`");
+        Err(SerenityError::Other("Invalid color specified in config!"))
+    }
 }
 
 /// # try_dm
@@ -140,15 +145,14 @@ pub async fn try_dm(
     user: UserId,
     title: impl std::fmt::Display,
     msg: impl std::fmt::Display,
-) -> SerenityResult<()> {
-    let color =
-        Color::from(u32::from_str_radix(&zwei_conf::CONF.ok_color.replace("#", ""), 16).unwrap());
-    let chan = user.create_dm_channel(ctx).await?;
-    chan.send_message(ctx, |mes| {
-        mes.embed(|e| e.color(color).title(title).description(msg))
-    })
-    .await?;
-    Ok(())
+) -> SerenityResult<Message> {
+    let color = get_color(&zwei_conf::CONF.ok_color)?;
+    user.create_dm_channel(ctx)
+        .await?
+        .send_message(ctx, |mes| {
+            mes.embed(|e| e.color(color).title(title).description(msg))
+        })
+        .await
 }
 
 /// # sanitize_text
@@ -213,8 +217,7 @@ pub async fn send_err_titled(
     title: impl std::fmt::Display,
     errtxt: impl std::fmt::Display,
 ) -> CommandResult {
-    let color =
-        Color::from(u32::from_str_radix(&zwei_conf::CONF.err_color.replace("#", ""), 16).unwrap());
+    let color = get_color(&zwei_conf::CONF.err_color)?;
     msg.channel_id
         .send_message(ctx, |mes| {
             mes.embed(|e| e.color(color).title(title).description(errtxt))
@@ -241,8 +244,7 @@ pub async fn send_ok(
     title: impl std::fmt::Display,
     msgtxt: impl std::fmt::Display,
 ) -> CommandResult {
-    let color =
-        Color::from(u32::from_str_radix(&zwei_conf::CONF.ok_color.replace("#", ""), 16).unwrap());
+    let color = get_color(&zwei_conf::CONF.ok_color)?;
     msg.channel_id
         .send_message(ctx, |mes| {
             mes.embed(|e| e.color(color).title(title).description(msgtxt))
@@ -364,7 +366,7 @@ async fn main() {
         // Can't run without a DB.
         .expect("Could not find a database to mangle!");
 
-    // For some reason this needs to be in its own scope
+    // Scope this so the lock is released at the end
     {
         // grab bot data for writing, insert a cloned `Arc<>` for global access
         let mut data = bot.data.write().await;
