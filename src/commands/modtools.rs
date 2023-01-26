@@ -13,14 +13,12 @@ use crate::{get_guildname, get_name, send_err, send_err_titled, send_ok, try_dm,
 #[command]
 #[required_permissions("MANAGE_MESSAGES")]
 #[only_in("guilds")]
-#[min_args(1)]
-#[max_args(2)]
+#[num_args(1)]
 #[aliases("prune", "massdelete", "massdel")]
 #[description = "Deletes the specified amount of unpinned messages in the chat. Max 100."]
 async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let amount: u64 = args.parse::<u64>().unwrap_or(0);
-    args.advance();
 
     if amount < 1 {
         return send_err_titled(
@@ -81,13 +79,12 @@ async fn purge(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
 #[command]
 #[required_permissions("KICK_MEMBERS")]
-#[max_args(1)]
+#[num_args(1)]
 #[description = "Kicks a member from the server. Optionally with a reason."]
 #[aliases("remove", "prod", "eject")]
 async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let mem_id = args.parse::<UserId>().unwrap_or_default();
-    args.advance();
 
     if mem_id.0 == 0 {
         return send_err_titled(
@@ -125,7 +122,8 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             .unwrap();
 
         if self_id == mem_id.0 {
-            msg.reply(ctx, "<:ZweiAngery:844167326243880960>").await?;
+            msg.reply_ping(ctx, "<:ZweiAngery:844167326243880960>")
+                .await?;
             return Ok(());
         } else if selfrole.1 <= memrole.1 {
             return send_err(
@@ -138,6 +136,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     };
 
     let fullname = get_name(msg, ctx, mem_id).await?;
+    args.advance();
     let reason = args.remains().unwrap_or("You know what you did!");
 
     let guildname = get_guildname(msg, ctx).await;
@@ -163,22 +162,22 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         };
         return send_err(ctx, msg, format!("I can't kick {fullname}, {txt}.")).await;
     }
-    return send_ok(
+    send_ok(
         ctx,
         msg,
         "User kicked.",
         format!("I sent {fullname} away. Be careful if they return."),
     )
-    .await;
+    .await
 }
 
 #[command]
 #[required_permissions("BAN_MEMBERS")]
+#[min_args(1)]
 #[aliases("yeet", "lostblue")]
 async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let mem_id = args.parse::<UserId>().unwrap_or_default();
-    args.advance();
 
     if mem_id.0 == 0 {
         return send_err_titled(
@@ -229,6 +228,7 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     };
 
     let fullname = get_name(msg, ctx, mem_id).await?;
+    args.advance();
     let days = args.parse::<u8>().unwrap_or(0);
     args.advance();
     let reason = args.remains().unwrap_or("You know what you did!");
@@ -278,10 +278,10 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 }
 
 #[command]
+#[num_args(1)]
 async fn warn(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     args.trimmed();
     let mem_id = args.parse::<UserId>().unwrap_or_default();
-    args.advance();
 
     if mem_id.0 == 0 {
         return send_err_titled(
