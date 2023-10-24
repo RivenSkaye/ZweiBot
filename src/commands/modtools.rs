@@ -9,7 +9,7 @@ use serenity::{
     Error,
 };
 
-use crate::{get_guildname, get_name, send_err, send_err_titled, send_ok, try_dm, ZweiData};
+use crate::{dbx, get_guildname, get_name, send_err, send_err_titled, send_ok, try_dm, ZweiData};
 
 #[command]
 #[required_permissions("MANAGE_MESSAGES")]

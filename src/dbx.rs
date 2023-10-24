@@ -1,12 +1,9 @@
 use log::{error, trace};
 use serenity::prelude::TypeMapKey;
-pub use sqlx::{
-    pool::PoolConnection as Connection, query, query_as, Error as SQLerr, Sqlite,
-    SqlitePool as Pool,
-};
+pub use sqlx::{query, query_as, Error as SQLerr, SqlitePool as Pool};
 use std::collections::HashMap;
 
-///# ZweiDbConn
+/// # ZweiDbConn
 /// A simple `TypeMapKey` implementation that helps access and use Database connections.
 /// Currently only contains a `sqlx::SqlitePool`, but might be extended in due time to
 /// allow for other DB types supported by SQLx to be used.
@@ -23,10 +20,10 @@ pub(crate) type ZweiDbRes<T> = Result<T, SQLerr>;
 /// # get_all_prefixes
 /// Exactly what it says on the tin, retrieves all known prefixes from the DB.
 /// Upon failure, this will log a message, but not terminate with an error.
-pub async fn get_all_prefixes(mut conn: Connection<Sqlite>) -> HashMap<u64, String> {
+pub async fn get_all_prefixes(conn: &Pool) -> HashMap<u64, String> {
     trace!("Getting all prefixes from the database");
     query!("SELECT server, prefix FROM prefixes")
-        .fetch_all(&mut conn)
+        .fetch_all(conn)
         .await
         .unwrap_or_else(|e| {
             error!("Proceeding without content from the prefixes table!\n\t{e:#?}");
@@ -219,4 +216,25 @@ pub async fn are_tags_in_server(conn: &Pool, guild: u64, tagvec: &Vec<String>) -
     get_server_tags(conn, guild)
         .await
         .map(|res| res.iter().filter(|tag| tagvec.contains(tag)).count())
+}
+
+pub async fn add_warning(conn: &Pool, guild: u64, user: u64, msg: String) -> ZweiDbRes<i32> {
+    let g = guild as i64;
+    let u = user as i64;
+    let res = query!(
+        "INSERT INTO warnings (serverid, userid, message) VALUES (?, ?, ?)",
+        g,
+        u,
+        msg
+    )
+    .execute(conn)
+    .await?;
+    Ok(query!(
+        "SELECT COUNT(warnid) AS warncount FROM warnings WHERE serverid = ? AND userid = ?",
+        g,
+        u
+    )
+    .fetch_one(conn)
+    .await?
+    .warncount)
 }

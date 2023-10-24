@@ -381,7 +381,7 @@ async fn main() {
         data.insert::<ZweiData>(zd);
         // Add owner list and all known prefixes for access
         data.insert::<ZweiOwners>(owners.clone());
-        data.insert::<ZweiPrefixes>(dbx::get_all_prefixes(dbpool.acquire().await.unwrap()).await);
+        data.insert::<ZweiPrefixes>(dbx::get_all_prefixes(&dbpool).await);
         // Store the connection pool
         data.insert::<ZweiDbConn>(dbpool);
     }
