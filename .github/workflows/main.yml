@@ -10,8 +10,14 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: yesolutions/mirror-action@master
+      - name: github2berg
+        uses: yesolutions/mirror-action@master
         with:
           REMOTE: 'https://codeberg.org/RivenSkaye/ZweiBot.git'
           GIT_USERNAME: RivenSkaye
           GIT_PASSWORD: ${{ secrets.GIT_PASSWORD }}
+      - name: berg2github
+        uses: bridgelightcloud/github-mirror-action@v1
+        with:
+          origin: 'https://codeberg.org/RivenSkaye/ZweiBot.git'
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
