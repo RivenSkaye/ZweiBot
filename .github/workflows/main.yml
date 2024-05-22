@@ -2,6 +2,7 @@ name: Codeberg Sync
 
 on:
   schedule: [{cron: "18 */4 * * *"}]
+  workflow_dispatch:
 
 jobs:
   mirror:
